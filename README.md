@@ -101,11 +101,9 @@ uid는 현재 task_struct의 신원 정보를 나타내는 real_cred에 저장�
 일단 main 함수 내부에서 plist에 syscall을 수행하면서, nr개의 프로세스 정보를 복사하면서, 동시에 return value인 total 값(실행 중인 총 프로세스 개수)를 저장했습니다. (이때, nr value는 실행할 떄 input으로 입력받습니다.) 복사한 plist와 nr을 인자로 하여 print_process 함수를 호출함으로써 plist 내에 있는 모든 프로세스를 주어진 형식에 맞게 출력했습니다.
 print_process 함수 내에서는, nr개의 integer list인 parent_index_list를 할당했는데, 이는 plist에 속한 process의 각 인덱스에 대하여, 그 프로세스의 부모 프로세스의 인덱스를 저장합니다. root process의 부모 프로세스의 인덱스는 -1로 정의했습니다.
 
-ex) plist[3]의 부모 프로세스는 plist[1]이므로 parent_index_list[3] == 1
-
-ex) plist[1]의 부모 프로세스는 plist[0]이므로 parent_index_list[1] == 0
-
-ex) plist[0]이 root process이므로 parent_index_list[1] == 0
+ex) plist[3]의 부모 프로세스는 plist[1]이므로 parent_index_list[3] == 1  
+ex) plist[1]의 부모 프로세스는 plist[0]이므로 parent_index_list[1] == 0  
+ex) plist[0]이 root process이므로 parent_index_list[1] == 0  
 
 이어서, 현재 출력하려는 프로세스가 root process로부터 떨어진 거리(process tree에서 그 node의 depth)만큼 "\t"을 반복 출력한 뒤, 프로세스 정보를 양식대로 출력했습니다.
 
@@ -115,7 +113,7 @@ ex) plist[3]의 부모 프로세스는 plist[1], plist[1]의 부모 프로세스
 
 ## 3. Investigation of the Process Tree
 
-모든 프로세스는 tree 구조로 이루어져 있습니다. 그래서 이것을 pre-order로 순회하여 리스트를 만들 경우, 모든 0이 아닌 인덱스 i에 대하여, i번째 프로세스는 (i-1)번째 프로세스가 부모 프로세스이거나, (i-1)번째 부모 프로세스와 공통인 부모 프로세스를 갖습니다. 그래서 2.5의 테스트 출력을 구현할 때에도 이를 이용하여 부모 프로세스의 인덱스를 찾을 수 있었습니다.
+모든 프로세스는 tree 구조로 이루어져 있습니다. 그래서 이것을 pre-order로 순회하여 리스트를 만들 경우, 모든 0이 아닌 인덱스 i에 대하여, i번째 프로세스는 (i-1)번째 프로세스가 부모 프로세스이거나, (i-1)번째 부모 프로세스와 공통인 부모 프로세스를 갖습니다. 그래서 2.5의 테스트 출력을 구현할 때에도 이를 이용하여 부모 프로세스의 인덱스를 찾을 수 있었습니다.  
 리눅스가 부팅되면 systemd와 kthreadd가 차례로 실행된다는 것을 pid를 통해 확인할 수 있습니다.(각각 1과 2) systemd는 user space와 시스템 부팅에 관련된 프로세스를 관리하는 최상위 프로세스이고, kthreadd는 커널 프로세스를 생성하는 최상위 프로세스라고 하는데, 각각의 자식 프로세스들의 pid는 kthreadd가 훨씬 작은 것을 볼 때, 리눅스가 부팅되면 kernel space가 먼저 일괄적으로 만들어진 뒤에야 user space가 생성되며 부팅 작업이 이루어진다는 것을 짐작할 수 있겠습니다.
 
 ## 4. Lesson Learned

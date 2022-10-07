@@ -36,7 +36,7 @@ void copy_prinfo(struct prinfo *target, struct task_struct *task) {
     target->parent_pid = task->parent->pid;
 
     if(list_empty(&child_list) == 0) {
-        target->first_child_pid = list_first_entry(&child_list, struct task_struct, sibling)->pid;
+        target->first_child_pid = list_entry(child_list.next, struct task_struct, sibling)->pid;
     } else target->first_child_pid = 0;
 
     if(list_empty(&sibling_list) == 0) {
@@ -52,8 +52,10 @@ int task_traverse(struct prinfo *buf , int *nr) {
     struct task_struct *curr_task = &init_task;
     struct list_head *head;
 
-    while(count < *nr) {
-        copy_prinfo(&buf[count++], curr_task);
+    while(1) {
+        if(count < *nr) {
+            copy_prinfo(&buf[count++], curr_task);
+        } else count++;
 
         if(list_empty(&curr_task->children)) {
             head = &curr_task->real_parent->children;
@@ -65,7 +67,8 @@ int task_traverse(struct prinfo *buf , int *nr) {
             head = &curr_task->sibling;
             curr_task = list_entry(head->next, struct task_struct, sibling);
         } else {
-            curr_task = list_first_entry(&curr_task->children, struct task_struct, sibling);
+            head = &curr_task->children;
+            curr_task = list_entry(head->next, struct task_struct, sibling);
         }
 
         if(curr_task->pid == init_task.pid) break;
@@ -109,12 +112,14 @@ int ptree(struct prinfo *buf, int *nr) {
 
     read_unlock(&tasklist_lock);
 
-    if (copy_to_user(nr, &nr_kernel, sizeof(int))) {
+    if (nr_max > nr_kernel) nr_max = nr_kernel;
+
+    if (copy_to_user(nr, &nr_max, sizeof(int))) {
         printk("ERROR: User space nr paste fault");
         return -EFAULT;
     }
 
-    if (copy_to_user(buf, kernel_prinfos, sizeof(struct prinfo) * nr_kernel)) {
+    if (copy_to_user(buf, kernel_prinfos, sizeof(struct prinfo) * nr_max)) {
         printk("ERROR: User space nr paste fault");
         return -EFAULT;
     }

@@ -57,6 +57,12 @@ rmmod ptree_mod.ko
 
 
 ## 2. High Level Design and Implementation
+Proj1의 전체적인 구성은 Module을 사용하여 System Call Table을 수정하는 부분,  
+User Mode에서 nr 데이터를 읽고 prinfo를 탐색한 후 다시 User Mode의 buf와 nr로 결과를 복사하는 부분,  
+task_struct의 doubly linked list 구조를 활용하여 child, sibling 프로세스를 탐색하는 부분,
+탐색한 task에서 정보를 추출하여 kernel 영역의 prinfo buffer에 저장하는 부분,
+새로 정의한 system call을 호출하여 얻은 데이터를 출력하는 테스트 부분으로 나눌 수 있습니다.
+
 ### 2.1 Module을 통한 System Call 정의
 이번 과제에서는 기본으로 주어진 별도의 소스 코드를 수정하지 않고 system call을 정의해야 했습니다.  
 ptree_mod.c에서 모듈을 구현한 방식은 hello_mod.c에 주어진 스켈레톤 코드를 참고하였습니다.  
@@ -67,3 +73,35 @@ ptree_mod_exit 함수에서는 398번 entry의 system call을 다시 legacy_sysc
 
 Module에서 System Call 구현에는 다음 사이트를 참고하였습니다.  
 https://www.linuxtopia.org/online_books/Linux_Kernel_Module_Programming_Guide/x958.html
+
+### 2.2 User 모드의 데이터 주고 받기 및 에러 처리 
+ptree 함수에서는 User 모드의 데이터를 copy_from_user 함수를 통해 복사하고, copy_to_user를 통해 결과를 전달하는 부분을 구현했습니다.  
+task_struct에서 프로세스를 탐색한 결과를 임시로 저장하기 위해 kmalloc을 통해 kernel에서 사용할 prinfo buffer를 선언했으며,  
+copy_from_user, copy_to_user 그리고 kmalloc이 실패한 경우 -EFAULT를 리턴하도록 설정했습니다.  
+system call을 호출했을 때 받은 argument는 NULL이거나 잘못된 값인 경우 -EINVAL을 리턴하도록 설정하여 에러 처리를 했습니다.  
+또한 task_struct를 확인하면서 중간에 프로세스가 종료되거나, 새로 생성되는 경우 문제가 발생할 수 있기 때문에 read_lock과 read_unlock을 통해 프로세스 탐색을 atomic 하게 수행할 수 있도록 설정했습니다.
+
+### 2.3 task_struct를 pre-order traversal 방식으로 프로세스 탐색
+task_traverse 함수에서는 init_task를 통해 가장 먼저 선언된 swapper/0의 task_struct에 접근하고,  
+child 프로세스가 있다면 child process부터 탐색하고, 그 이후 sibling 프로세스를 탐색하여 pre-order traversal을 구현했습니다.  
+task_struct의 children과 sibling은 list_head 구조체로, next와 prev를 통해 다음과 이전 list_head에 접근할 수 있습니다.  
+children에서 첫 번째 child의 task_struct를 구할 때는 children이 가리키는 next list_head를 list_entry 함수에 인자로 주어 얻었습니다.  
+sibling의 경우에는 더 이상 children이 없는 task_struct에서 시작하여 sibling이 존재하는 task_struct를 찾아 parent task_struct를 탐색하였습니다.  
+이후 children을 찾을 때와 마찬가지로 sibling이 가리키는 next list_head를 list_entry 함수에 인자로 주어 다음 sibling task_struct를 얻었습니다.
+
+### 2.4 task_struct에서 정보를 추출하여 prinfo buffer에 저장
+copy_prinfo 함수에서는 입력으로 받은 task_struct에서 state, pid, parent_pid의 정보를 그대로 kernel 영역에 할당한 buffer에 저장하였고,  
+children list가 비어있다면 first_child_pid를 0으로, 비어 있지 않다면 list_entry 함수를 통해 첫 번째 children.next의 task_struct 찾아서 pid를 저장했습니다.  
+sibling list의 경우에도 마찬가지로 비어있다면 first_sibling_list를 0으로 설정했으며, 비어 있지 않은 경우에는 sibling.next의 task_struct를 list_entry 함수를 통해 얻고 pid를 저장했습니다.  
+uid는 현재 task_struct의 신원 정보를 나타내는 real_cred에 저장된 uid에서 값을 가져와 저장했습니다.  
+프로그램의 이름인 comm은 prinfo 구조체에서는 길이가 64로 선언되어 있으나, task_struct에서는 16으로 선언되어 있어 strncpy를 통해 TASK_COMM_LEN 만큼 복사했습니다.
+
+### 2.5 새로 정의한 syscall 테스트하여 결과 출력
+
+
+## 3. Lesson Learned
+
+### 3.1 
+c언어가 아직 익숙하지 않아 포인터를 처리하는 과정에서 에러가 많이 발생했습니다.  
+여러 헤더 파일을 한 눈에 볼 수 없어 각 구조체에 정의된 변수가 포인터로 선언되었는지 아닌지의 여부와 어떤 자료형, 구조체로 선언 되었는지 확인하는 작업이 필수적이었기에 관련 문서를 찾아보는 등 이해하는 데 많은 시간을 들였습니다.  
+이 경험을 통해 처음 보는 헤더 파일에 대해서도 구조를 이해할 수 있는 능력을 조금이나마 길렀습니다.

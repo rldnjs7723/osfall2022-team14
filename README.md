@@ -23,9 +23,12 @@ tar xvzf tizen-unified_20181024.1_iot-headless-2parts-armv7l-rpi3.tar.gz -C ../t
 arm-linux-gnueabi-gcc -I/include test/test_ptree.c -o test/test
 ```
 앞서 tree_mod.c 파일을 컴파일하여 생긴 ptree_mod.ko 파일과, test_ptree.c 파일을 컴파일하여 생긴 test 파일을 tizen에서 실행할 수 있도록 rootfs.img에 넣어주어야 합니다.  
-tizen-image 폴더에 생성한 mnt_dir에 rootfs.img를 mount 하고, mnt_dir/root 폴더에 ptree_mod.ko와 test 파일을 복사합니다.
+tizen-image 폴더에 생성한 mnt_dir에 rootfs.img를 mount 하고, 
 ```
 sudo mount ../tizen-image/rootfs.img ../tizen-image/mnt_dir
+```
+mnt_dir/root 폴더에 ptree_mod.ko와 test 파일을 복사합니다.
+```
 sudo cp ./kernel/ptree_mod.ko ./test/test ../tizen-image/mnt_dir/root
 ```
 복사가 완료되었다면 mnt_dir을 unmount 합니다.
@@ -35,7 +38,7 @@ sudo umount ../tizen-image/mnt_dir
 
 이후 kernel 폴더 안에 있는 qemu.sh를 실행하면 tizen kernel이 실행됩니다.
 ```
-sudo ./qemu.sh
+./qemu.sh
 ```
 
 로그인 후 tizen 안에서 테스트 파일을 실행하려면

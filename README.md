@@ -9,6 +9,11 @@ git clone https://github.com/rldnjs7723/osfall2022-team14.git
 ```
 cd osfall2022-team14
 ```
+다음 명령어를 통해 proj1 branch로 이동한 후 git pull을 통해 변경된 데이터를 내려받습니다.
+```
+git branch --set-upstream-to origin/proj1
+git pull
+```
 kernel 폴더가 위치한 디렉토리에 tizen-image라는 폴더를 생성하고, rootfs를 mount할 폴더도 함께 생성합니다.  
 컴파일은 build-rpi3-arm64.sh를 통해 수행하며, 이번 과제에 맞는 config 파일은 github에 올려놓았으므로 별도의 작업이 필요 없이 아래의 명령어만으로 커널 코드를 컴파일 할 수 있습니다.  
 scripts 디렉토리의 mkbootimg_rpi3.sh를 통해 이미지 파일 boot.img, modules.img를 생성하고 이를 tizen-image 폴더로 이동합니다.  

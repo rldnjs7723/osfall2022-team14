@@ -28,6 +28,8 @@
 #include <linux/mm_types_task.h>
 #include <linux/task_io_accounting.h>
 
+#define CPU_WITHOUT_WRR 1
+
 /* task_struct member predeclarations (sorted alphabetically): */
 struct audit_context;
 struct backing_dev_info;
@@ -468,6 +470,13 @@ struct sched_rt_entity {
 #endif
 } __randomize_layout;
 
+struct sched_wrr_entity {
+    struct list_head        		run_list;
+    unsigned int            		weight;
+    unsigned int            		time_slice;
+    unsigned short			on_rq;
+};
+
 struct sched_dl_entity {
 	struct rb_node			rb_node;
 
@@ -602,6 +611,7 @@ struct task_struct {
 	const struct sched_class	*sched_class;
 	struct sched_entity		se;
 	struct sched_rt_entity		rt;
+	struct sched_wrr_entity     	wrr;
 #ifdef CONFIG_CGROUP_SCHED
 	struct task_group		*sched_task_group;
 #endif

@@ -40,6 +40,15 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
 
+#include <uapi/asm-generic/errno-base.h>
+#include <linux/uidgid.h>
+#include <linux/thread_info.h>
+#include <asm/unistd.h>
+
+#include <linux/syscalls.h>
+#include <asm/uaccess.h>
+#include <linux/slab.h>
+
 DEFINE_PER_CPU_SHARED_ALIGNED(struct rq, runqueues);
 
 /*
@@ -85,6 +94,8 @@ int sysctl_sched_rt_runtime = 950000;
 
 /* CPUs with isolated domains */
 cpumask_var_t cpu_isolated_map;
+
+extern void trigger_load_balance_wrr(struct rq *rq);
 
 /*
  * __task_rq_lock - lock the rq @p resides on.
@@ -2384,7 +2395,9 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
 		p->sched_reset_on_fork = 0;
 	}
 
-	if (dl_prio(p->prio)) {
+	if (wrr_policy(p->policy)) {
+        	p->sched_class = &wrr_sched_class;
+    	} else if (dl_prio(p->prio)) {
 		put_cpu();
 		return -EAGAIN;
 	} else if (rt_prio(p->prio)) {
@@ -3040,6 +3053,7 @@ void scheduler_tick(void)
 #ifdef CONFIG_SMP
 	rq->idle_balance = idle_cpu(cpu);
 	trigger_load_balance(rq);
+	trigger_load_balance_wrr(rq);
 #endif
 	rq_last_tick_reset(rq);
 }
@@ -3981,7 +3995,9 @@ static void __setscheduler(struct rq *rq, struct task_struct *p,
 	if (keep_boost)
 		p->prio = rt_effective_prio(p, p->prio);
 
-	if (dl_prio(p->prio))
+	if (wrr_policy(p->policy))
+        	p->sched_class = &wrr_sched_class;
+    	else if (dl_prio(p->prio))
 		p->sched_class = &dl_sched_class;
 	else if (rt_prio(p->prio))
 		p->sched_class = &rt_sched_class;
@@ -5864,6 +5880,7 @@ void __init sched_init(void)
 		rq->calc_load_update = jiffies + LOAD_FREQ;
 		init_cfs_rq(&rq->cfs);
 		init_rt_rq(&rq->rt);
+		init_wrr_rq(&rq->wrr);
 		init_dl_rq(&rq->dl);
 #ifdef CONFIG_FAIR_GROUP_SCHED
 		root_task_group.shares = ROOT_TASK_GROUP_LOAD;
@@ -6756,3 +6773,83 @@ const u32 sched_prio_to_wmult[40] = {
  /*  10 */  39045157,  49367440,  61356676,  76695844,  95443717,
  /*  15 */ 119304647, 148102320, 186737708, 238609294, 286331153,
 };
+
+SYSCALL_DEFINE2(sched_setweight, pid_t, pid, int, weight)
+{
+    struct task_struct *p;
+    struct rq *rq;
+    struct wrr_rq *wrr_rq;
+    uid_t is_root;
+
+    if (pid < 0 || weight < 1 || weight > 20) {
+        printk(KERN_ERR "ERROR : Invalid argument\n");
+        return -EINVAL;
+    }
+
+    rcu_read_lock();
+
+    if (!pid) p = current;
+    else p = find_process_by_pid(pid);
+    
+    if (!p) {
+	printk(KERN_ERR "ERROR: No such process pid\n");
+	rcu_read_unlock();
+	return -ESRCH;
+    }
+    
+    if(p->policy != SCHED_WRR) {
+        printk(KERN_ERR "ERROR : Policy is not sched_wrr\n");
+        rcu_read_unlock();
+        return -EINVAL;
+    }
+    
+    kuid_t root_euid;
+    root_euid.val = 0;
+    if (check_same_owner(p) || uid_eq(current_cred()->euid, root_euid)) {
+    	if (p->wrr.weight > weight || uid_eq(current_cred()->euid, root_euid)) {
+    	    wrr_rq = &task_rq(p)->wrr;
+            wrr_rq->total_weight += weight - p->wrr.weight;
+            p->wrr.weight = weight;
+            rcu_read_unlock();
+    	    return weight;
+    	}
+    	else {
+    	    rcu_read_unlock();
+            return -EACCES;
+    	}
+    }
+    else {
+    	rcu_read_unlock();
+        return -EACCES;
+    }
+}
+
+SYSCALL_DEFINE1(sched_getweight, pid_t, pid)
+{
+    int weight;
+    struct task_struct *p;
+
+    if(pid < 0) {
+        printk(KERN_ERR "ERROR : Invalid pid\n");
+        return -EINVAL;
+    }
+
+    rcu_read_lock();
+
+    p = find_process_by_pid(pid);
+    if (p==NULL)
+	{
+		printk(KERN_ERR "ERROR: No such process pid\n");
+		return ESRCH;
+	}
+	if(p->policy != SCHED_WRR) {
+            printk(KERN_ERR "ERROR : Policy is not sched_wrr\n");
+            rcu_read_unlock();
+            return -EINVAL;
+    }
+	weight = p->wrr.weight;
+
+    rcu_read_unlock();
+
+    return weight;
+}

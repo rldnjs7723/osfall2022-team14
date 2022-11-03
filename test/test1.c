@@ -37,10 +37,8 @@ int main(int argc, char *argv[]) {
     double time_interval;
     param.sched_priority = 0;
 
-    if (sched_setscheduler(getpid(), SCHED_WRR, &param) < 0) {
-        printf("ERROR: %d", 1);
+    if (sched_setscheduler(getpid(), SCHED_WRR, &param) < 0)
         return -1;
-    }
     
     printf("Running %d processes whose weights are 1 through %d respectively\n", process_num, process_num);
     

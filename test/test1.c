@@ -32,6 +32,7 @@ int main(int argc, char *argv[]) {
     }
     int num = 357000023 * 2 * 3;
     int process_num = atoi(argv[1]);
+    int weight;
     struct sched_param param;
     struct timespec start, end;
     double time_interval;
@@ -43,7 +44,7 @@ int main(int argc, char *argv[]) {
     printf("Running %d processes whose weights are 1 through %d respectively\n", process_num, process_num);
     
     for (int i = 1; i <= process_num; i++) {
-        int weight = i;
+        weight = i;
         if (fork() == 0) {
             if (syscall(SCHED_SETWEIGHT, getpid(), weight) <= 0)
                 exit(-1);
@@ -52,7 +53,7 @@ int main(int argc, char *argv[]) {
             clock_gettime(CLOCK_MONOTONIC, &end);
             time_interval = (double)(end.tv_sec - start.tv_sec) +
                 (double)(end.tv_nsec - start.tv_nsec) / 1000000000;
-            printf("Process with weight %ld spent %fsec\n", syscall(SCHED_GETWEIGHT, getpid(), weight), time_interval);
+            printf("Process with weight %ld spent %fsec\n", syscall(SCHED_GETWEIGHT, getpid()), time_interval);
             exit(0);         
         }
     }

@@ -48,6 +48,7 @@ int main(int argc, char *argv[]) {
         if (fork() == 0) {
             if (syscall(SCHED_SETWEIGHT, getpid(), weight) <= 0)
                 exit(-1);
+            printf("Process %d Start\n", i);
             clock_gettime(CLOCK_MONOTONIC, &start);
             prime_factor(num);
             clock_gettime(CLOCK_MONOTONIC, &end);

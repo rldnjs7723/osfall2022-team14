@@ -4035,31 +4035,16 @@ static int __sched_setscheduler(struct task_struct *p,
 	int queue_flags = DEQUEUE_SAVE | DEQUEUE_MOVE | DEQUEUE_NOCLOCK;
 	struct rq *rq;
 	
-	/*struct cpumask new_mask;
-   	int prev_cpu;
-   	
-    	if (policy == SCHED_WRR) {
-        	prev_cpu = task_cpu(p);
-        	sched_getaffinity(p->pid, &new_mask); 
-        	cpumask_clear_cpu(CPU_WITHOUT_WRR, &new_mask);
-        	sched_setaffinity(p->pid, &new_mask);
-
-        	if (prev_cpu == CPU_WITHOUT_WRR) {
-            		rq = task_rq_lock(p, &rf);
-            		update_rq_clock(rq);
-            		if (task_running(rq, p) || p->state == TASK_WAKING) {
-                		struct migration_arg arg = { p, 0 };
-                		task_rq_unlock(rq, p, &rf);
-                		stop_one_cpu(cpu_of(rq), migration_cpu_stop, &arg);
-                		tlb_migrate_finish(p->mm);
-            		} else if (task_on_rq_queued(p)) {
-                		rq = move_queued_task(rq, &rf, p, 0);
-                		task_rq_unlock(rq, p, &rf);
-            		} else {
-                		task_rq_unlock(rq, p, &rf);
-            		}
-        	}
-    	}*/
+	struct cpumask new_mask;
+   	int cpu_num;
+   	//one CPU run queue must be left empty: no WRR task should be running on it
+	if (wrr_policy(policy)) {
+		cpu_num = task_cpu(p);
+		// Exclude CPU 0
+		sched_getaffinity(p->pid, &new_mask); 
+		cpumask_clear_cpu(CPU_WITHOUT_WRR, &new_mask);
+		sched_setaffinity(p->pid, &new_mask);
+	}
 
 	/* The pi code expects interrupts enabled */
 	BUG_ON(pi && in_interrupt());

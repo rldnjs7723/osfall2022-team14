@@ -94,7 +94,7 @@ int sysctl_sched_rt_runtime = 950000;
 
 /* CPUs with isolated domains */
 cpumask_var_t cpu_isolated_map;
- 
+
 extern void trigger_load_balance_wrr(struct rq *rq);
 
 /*
@@ -6800,84 +6800,96 @@ const u32 sched_prio_to_wmult[40] = {
  /*  15 */ 119304647, 148102320, 186737708, 238609294, 286331153,
 };
 
-SYSCALL_DEFINE2(sched_setweight, pid_t, pid, int, weight)
-{
-    struct task_struct *p;
-    struct rq *rq;
-    struct wrr_rq *wrr_rq;
-    uid_t is_root;
+/*
+ * Set the SCHED_WRR weight of process, as identified by 'pid'.
+ * If 'pid' is 0, set the weight for the calling process.
+ * System call number 398.
+ */
+long sched_setweight(pid_t pid, int weight) {
+	struct task_struct *proc;
+	struct wrr_rq *rq;
+	int root_euid = 0;
 
-    if (pid < 0 || weight < 1 || weight > 20)
-        return -EINVAL;
+	// Weights of tasks can range between 1 and 20
+	if(pid < 0 || weight < 1 || weight > 20) return -EINVAL;
 
-    rcu_read_lock();
+	rcu_read_lock();
 
-    if (!pid) p = current;
-    else p = find_process_by_pid(pid);
-    
-     if (!p || !wrr_policy(p->policy)) {
+	if(pid == 0) proc = current;
+	else proc = find_process_by_pid(pid);
+
+	if(proc == NULL) {
+		// No Such Process
 		rcu_read_unlock();
-		return -EINVAL;
-	}
-    
-    kuid_t root_euid;
-    root_euid.val = 0;
-    if (check_same_owner(p) || uid_eq(current_cred()->euid, root_euid)) {
-    	if (p->wrr.weight > weight || uid_eq(current_cred()->euid, root_euid)) {
-    	    wrr_rq = &task_rq(p)->wrr;
-            wrr_rq->total_weight += weight - p->wrr.weight;
-            p->wrr.weight = weight;
-            rcu_read_unlock();
-    	    return weight;
-    	}
-    	else {
-    	    rcu_read_unlock();
-            return -EACCES;
-    	}
-    }
-    else {
-    	rcu_read_unlock();
-        return -EACCES;
-    }
-}
-
-SYSCALL_DEFINE1(sched_getweight, pid_t, pid)
-{
-    int weight;
-    struct task_struct *p;
-
-    if (pid < 0)
-        return -EINVAL;
-
-    rcu_read_lock();
-    p = find_process_by_pid(pid);
-
-    if (!p || !wrr_policy(p->policy)) {
+		return -ESRCH;
+	} else if(!wrr_policy(proc->policy)) {
+		// Error to try and set the weight on a process not using the SCHED_WRR policy
 		rcu_read_unlock();
 		return -EINVAL;
 	}
 
-	weight = p->wrr.weight;
-    rcu_read_unlock();
-    return weight;
-}
-/*MODULE_LICENSE("GPL v2");
-extern void* compat_sys_call_table[];
-void* legacy_syscall1 = NULL;
-void* legacy_syscall2 = NULL;
+	// Adjusting weight: process owner & administrator only
+	if(check_same_owner(proc) || current_cred()->euid.val == root_euid) {
+		if(proc->wrr.weight > weight) {
+			// Increasing weight: administrator only
+			if(current_cred()->euid.val == root_euid) {
+				rq = &task_rq(proc)->wrr;
+				rq->total_weight += weight - proc->wrr.weight;
+				proc->wrr.weight = weight;
 
-static int wrr_mod_init(void) {
-    printk("module loaded\n");
-    legacy_syscall1 = compat_sys_call_table[398];
-    legacy_syscall2 = compat_sys_call_table[399];
-    compat_sys_call_table[398] = sched_setweight;
-    compat_sys_call_table[399] = sched_getweight;
-    return 0;
+				rcu_read_unlock();
+				return weight;
+			} else {
+				// Permission Denied
+				rcu_read_unlock();
+				return -EACCES;
+			}
+		} else {
+			// Decreasing weight
+			rq = &task_rq(proc)->wrr;
+			rq->total_weight += weight - proc->wrr.weight;
+			proc->wrr.weight = weight;
+
+			rcu_read_unlock();
+			return weight;
+		}
+	} else {
+		// Permission Denied
+		rcu_read_unlock();
+		return -EACCES;
+	}
 }
-static void wrr_mod_exit(void) {
-    printk("module exit\n");
-    compat_sys_call_table[398] = legacy_syscall1;
-    compat_sys_call_table[399] = legacy_syscall2;
+
+/*
+ * Obtain the SCHED_WRR weight of a process as identified by 'pid'.
+ * If 'pid' is 0, return the weight of the calling process.
+ * System call number 399.
+ */
+long sched_getweight(pid_t pid) {
+	long weight;
+	struct task_struct *proc;
+
+	if (pid < 0) return -EINVAL;
+
+	rcu_read_lock();
+	if(pid == 0) proc = current;
+	else proc = find_process_by_pid(pid);
+
+	if(proc == NULL) {
+		// No Such Process
+		rcu_read_unlock();
+		return -ESRCH;
+	} else if(!wrr_policy(proc->policy)) {
+		// Error to try and set the weight on a process not using the SCHED_WRR policy
+		rcu_read_unlock();
+		return -EINVAL;
+	}
+
+	// Any user should be able to call sched_getweight
+	weight = proc->wrr.weight;
+	rcu_read_unlock();
+	return weight;
 }
-module_init(wrr_mod_init);
-module_exit(wrr_mod_exit);*/
+
+EXPORT_SYMBOL(sched_setweight);
+EXPORT_SYMBOL(sched_getweight);

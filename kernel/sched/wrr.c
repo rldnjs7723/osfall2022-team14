@@ -182,7 +182,7 @@ static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued)
 
     if (!wrr_policy(p->policy) || --wrr_se->time_slice)
         return;
-	else {
+    else {
         list_del(&wrr_se->run_list);
         wrr_se->time_slice = wrr_se->weight * HZ / 100;
         list_add_tail(&wrr_se->run_list, &wrr_rq->queue_head);

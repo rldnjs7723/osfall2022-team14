@@ -73,6 +73,24 @@ struct wrr_rq {
 기존의 priority가 RT(Real Time) > CFS(Completely Fair Scheduler)였던 것을 RT > WRR > CFS로 변경해주기 위하여 kernel/sched/rt.c에서 rt_sched_class의 next를 wrr_sched_class로, kernel/sched/wrr.c에서 wrr_sched_class의 next를 fair_sched_class로 설정해주었습니다.
 
 ### 2-3 System Call functions
+sched_setweight, sched_getweight 두 가지 System Call을 추가할 때는 Project 1에서 했던 것처럼 Dynamic하게 설정했습니다.  
+398번, 399번 entry에 syscall을 추가하였으므로 arch/arm64/include/asm/unistd.h에서 __NR_compat_syscalls의 값을 400으로 늘렸습니다.
+
+kernel/sched/core.c에는 sched_setweight, sched_getweight 함수를 작성하여 EXPORT_SYMBOL로 외부에서 접근 가능하도록 설정하였습니다.  
+setweight에서는 pid가 음수일 경우, weight가 1과 20 사이의 값이 아닌 경우, Schedule Policy가 WRR이 아닌 경우 Invalid Argument Error를 리턴하도록 설정했으며, 
+해당 pid를 가지는 process가 없는 경우 No Such Process Error를 리턴하도록 설정했습니다. 
+pid가 0인 경우 calling process의 weight를 수정하도록 했습니다.  
+권한의 경우 Weight를 조정하려는 user가 프로세스의 owner이거나 root인 경우에 변경할 수 있으며, 그렇지 않은 경우 Permission Denied Error를 리턴하도록 설정했습니다.  
+Weight를 증가시키는 경우에는 root인 경우에만 가능하도록 하였고, 해당 프로세스가 포함된 run_queue를 찾아 total_weight를 수정한 후 프로세스의 weight를 수정합니다.  
+getweight에서 pid와 관련된 처리는 setweight와 동일하며, 문제가 없다면 해당 pid를 가지는 프로세스의 weight를 리턴하도록 설정했습니다.
+
+Dynamic한 system call 할당을 위해 wrr_mod.c 파일을 추가했으며, extern 함수로 project1과 동일하게 system call table을 수정했습니다.  
+이 때 system call table을 수정하기 위해 arch/arm64/kernel/sys32.c의 compat_sys_call_table을 project1에서와 같이 const하지 않도록 수정했습니다.  
+wrr_mod.c를 컴파일 하기 위해 kernel/sched/Makefile에 다음과 같은 줄을 추가했습니다.
+```
+obj-m += wrr_mod.o
+```
+컴파일 하면 wrr_mod.ko 파일을 생성하며, 이를 rootfs에 넣어 /root/wrr_mod.ko에 위치하도록 설정했습니다.
 
 ### 2-4 Load-Balancing
 

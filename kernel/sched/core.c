@@ -94,7 +94,7 @@ int sysctl_sched_rt_runtime = 950000;
 
 /* CPUs with isolated domains */
 cpumask_var_t cpu_isolated_map;
-
+ 
 extern void trigger_load_balance_wrr(struct rq *rq);
 
 /*
@@ -4034,6 +4034,32 @@ static int __sched_setscheduler(struct task_struct *p,
 	int reset_on_fork;
 	int queue_flags = DEQUEUE_SAVE | DEQUEUE_MOVE | DEQUEUE_NOCLOCK;
 	struct rq *rq;
+	
+	/*struct cpumask new_mask;
+   	int prev_cpu;
+   	
+    	if (policy == SCHED_WRR) {
+        	prev_cpu = task_cpu(p);
+        	sched_getaffinity(p->pid, &new_mask); 
+        	cpumask_clear_cpu(CPU_WITHOUT_WRR, &new_mask);
+        	sched_setaffinity(p->pid, &new_mask);
+
+        	if (prev_cpu == CPU_WITHOUT_WRR) {
+            		rq = task_rq_lock(p, &rf);
+            		update_rq_clock(rq);
+            		if (task_running(rq, p) || p->state == TASK_WAKING) {
+                		struct migration_arg arg = { p, 0 };
+                		task_rq_unlock(rq, p, &rf);
+                		stop_one_cpu(cpu_of(rq), migration_cpu_stop, &arg);
+                		tlb_migrate_finish(p->mm);
+            		} else if (task_on_rq_queued(p)) {
+                		rq = move_queued_task(rq, &rf, p, 0);
+                		task_rq_unlock(rq, p, &rf);
+            		} else {
+                		task_rq_unlock(rq, p, &rf);
+            		}
+        	}
+    	}*/
 
 	/* The pi code expects interrupts enabled */
 	BUG_ON(pi && in_interrupt());
@@ -6781,27 +6807,18 @@ SYSCALL_DEFINE2(sched_setweight, pid_t, pid, int, weight)
     struct wrr_rq *wrr_rq;
     uid_t is_root;
 
-    if (pid < 0 || weight < 1 || weight > 20) {
-        printk(KERN_ERR "ERROR : Invalid argument\n");
+    if (pid < 0 || weight < 1 || weight > 20)
         return -EINVAL;
-    }
 
     rcu_read_lock();
 
     if (!pid) p = current;
     else p = find_process_by_pid(pid);
     
-    if (!p) {
-	printk(KERN_ERR "ERROR: No such process pid\n");
-	rcu_read_unlock();
-	return -ESRCH;
-    }
-    
-    if(p->policy != SCHED_WRR) {
-        printk(KERN_ERR "ERROR : Policy is not sched_wrr\n");
-        rcu_read_unlock();
-        return -EINVAL;
-    }
+     if (!p || !wrr_policy(p->policy)) {
+		rcu_read_unlock();
+		return -EINVAL;
+	}
     
     kuid_t root_euid;
     root_euid.val = 0;
@@ -6829,27 +6846,38 @@ SYSCALL_DEFINE1(sched_getweight, pid_t, pid)
     int weight;
     struct task_struct *p;
 
-    if(pid < 0) {
-        printk(KERN_ERR "ERROR : Invalid pid\n");
+    if (pid < 0)
         return -EINVAL;
-    }
 
     rcu_read_lock();
-
     p = find_process_by_pid(pid);
-    if (p==NULL)
-	{
-		printk(KERN_ERR "ERROR: No such process pid\n");
-		return ESRCH;
+
+    if (!p || !wrr_policy(p->policy)) {
+		rcu_read_unlock();
+		return -EINVAL;
 	}
-	if(p->policy != SCHED_WRR) {
-            printk(KERN_ERR "ERROR : Policy is not sched_wrr\n");
-            rcu_read_unlock();
-            return -EINVAL;
-    }
+
 	weight = p->wrr.weight;
-
     rcu_read_unlock();
-
     return weight;
 }
+/*MODULE_LICENSE("GPL v2");
+extern void* compat_sys_call_table[];
+void* legacy_syscall1 = NULL;
+void* legacy_syscall2 = NULL;
+
+static int wrr_mod_init(void) {
+    printk("module loaded\n");
+    legacy_syscall1 = compat_sys_call_table[398];
+    legacy_syscall2 = compat_sys_call_table[399];
+    compat_sys_call_table[398] = sched_setweight;
+    compat_sys_call_table[399] = sched_getweight;
+    return 0;
+}
+static void wrr_mod_exit(void) {
+    printk("module exit\n");
+    compat_sys_call_table[398] = legacy_syscall1;
+    compat_sys_call_table[399] = legacy_syscall2;
+}
+module_init(wrr_mod_init);
+module_exit(wrr_mod_exit);*/

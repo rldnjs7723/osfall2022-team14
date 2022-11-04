@@ -1,5 +1,8 @@
 ### OSFALL2022 TEAM14 PROJ2
 
+## 0. Overview
+WRR scheduler는 기존의 RR scheduler에서 각 task마다 weight(time slice)을 부여해 변형한 scheduler입니다. Proj2에서는 이러한 WWR scheduler를 구현하는 것을 목표로 했습니다. 추가적으로, 기존의 scheduler와의 priority나 상호작용 관련 문제 해결과, run queue 간의 total weight의 균형을 맞추는 load-balancing의 구현을 요했습니다. 이 모든 것들을 구현하기 위하여 여러 constant와 data structure, function을 정의하였고, 그 중 주된 것들을 2장에서 소개하겠습니다. 시스템 콜을 할 때에는 Proj1 때와 마찬가지로 동적으로 구현했습니다.
+
 ## 1. How to Build Kernel
 git clone을 통해 kernel 파일을 모두 다운 받으면 해당 위치에 osfall2022-team14 라는 폴더가 생성됩니다.
 ```
@@ -31,3 +34,46 @@ insert 한 모듈을 제거하려면 rmmod 명령어를 입력하면 됩니다.
 ```
 rmmod /root/wrr_mod.ko
 ```
+
+## 2. Define and implement WRR(Weighted Round-Robin) scheduler
+### 2-1 Define constants and implement data structures
+include/uapi/linux/sched.h 파일에는 SCHED_WRR이라는 constant를 7로서 새롭게 추가해주었고, include/linux/sched.h 파일에는 각 WRR entry를 의미하는 sched_wrr_entity 구조체를 선언한 뒤, wrr라는 인스턴스를 추가로 생성해주었습니다.
+
+```
+struct sched_wrr_entity {
+    struct list_head                run_list;
+    unsigned int                    weight;
+    unsigned int                    time_slice;
+    unsigned short	                on_rq;
+};
+```
+
+include/linux/init_task.h 파일에는 다음과 같이 wrr의 member를 초기화해주었습니다. default weight은 10이고, 그때의 time_slice은 100ms이므로 HZ / 10으로 초기화하였습니다. HZ의 value는 1초 동안 jiffies가 세는 tick의 수(버전에 따라 100 또는 1000), 어쨌든 1초를 의미하므로 HZ / 10은 0.1초(100ms)를 의미합니다.
+
+```
+.wrr = { 				    			             \
+     .weight = 10,   					             \
+     .time_slice = HZ / 10, 					     \
+     .on_rq = 0, 						             \
+     .run_list = LIST_HEAD_INIT(tsk.wrr.run_list), 	 \
+}, 
+```
+
+kernel/sched/sched.h 파일에는 SCHED_WRR에 대한 policy를 생성하고 사용하면서, 구현하는 WRR scheduler가 작동할 수 있는 환경을 만들었습니다. 또한, sched_wrr_entity가 구성하는 WRR run queue인 wrr_rq 구조체를 정의했습니다. 이 구조체의 인스턴스는 kernel/sched/core.c에서 초기화됩니다.
+
+```
+struct wrr_rq {
+    	struct list_head queue_head;
+    	unsigned int total_weight;
+    	unsigned int last_time;
+};
+```
+
+### 2-2 Change priorities of schedulers
+기존의 priority가 RT(Real Time) > CFS(Completely Fair Scheduler)였던 것을 RT > WRR > CFS로 변경해주기 위하여 kernel/sched/rt.c에서 rt_sched_class의 next를 wrr_sched_class로, kernel/sched/wrr.c에서 wrr_sched_class의 next를 fair_sched_class로 설정해주었습니다.
+
+### 2-3 System Call functions
+
+### 2-4 Load-Balancing
+
+### 2-5 Other functions

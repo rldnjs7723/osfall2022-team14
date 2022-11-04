@@ -41,20 +41,20 @@ include/uapi/linux/sched.h 파일에는 SCHED_WRR이라는 constant를 7로서 �
 
 ```
 struct sched_wrr_entity {
-    struct list_head        		run_list;
-    unsigned int            		weight;
-    unsigned int            		time_slice;
-    unsigned short			        on_rq;
+    struct list_head                run_list;
+    unsigned int                    weight;
+    unsigned int                    time_slice;
+    unsigned short	                on_rq;
 };
 ```
 
 include/linux/init_task.h 파일에는 다음과 같이 wrr의 member를 초기화해주었습니다. default weight은 10이고, 그때의 time_slice은 100ms이므로 HZ / 10으로 초기화하였습니다. HZ의 value는 1초 동안 jiffies가 세는 tick의 수(버전에 따라 100 또는 1000), 어쨌든 1초를 의미하므로 HZ / 10은 0.1초(100ms)를 의미합니다.
 
 ```
-.wrr = { 				    			                           \
-     .weight = 10,   					                       \
-     .time_slice = HZ / 10, 					               \
-     .on_rq = 0, 						                         \
+.wrr = { 				    			             \
+     .weight = 10,   					             \
+     .time_slice = HZ / 10, 					     \
+     .on_rq = 0, 						             \
      .run_list = LIST_HEAD_INIT(tsk.wrr.run_list), 	 \
 }, 
 ```

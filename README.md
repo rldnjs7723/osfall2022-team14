@@ -97,4 +97,15 @@ kernel/sched/core.c에서 sched_fork와 __setscheduler 함수에서 현재 프�
 __sched_setscheduler 함수에서는 해당 pid의 cpu affinity mask를 받아 include/linux/sched.h에서 설정한 CPU_WITHOUT_WRR 값에 따라 0번 core에는 WRR과 관련된 프로세스가 실행되지 않도록 설정했습니다.  
 scheduler_tick 함수에서는 wrr.c에 정의된 trigger_load_balance_wrr 함수를 호출하여 매 tick마다 남은 시간을 확인해서 2000ms 마다 load_balance를 수행하도록 설정했습니다.
 
-### 2-5 Other functions
+### 2-5 Debug
+sched_debug와 schedstat의 내용을 확인하기 위해 arch/arm64/configs/tizen_bcmrpi3_defconfig에서 CONFIG_SCHED_DEBUG와 CONFIG_SCHEDSTATS의 값을 y로 변경했습니다.
+
+kernel/sched/debug.c에서 print_wrr_rq를 통해 주어진 cpu core의 run queue에 할당된 프로세스의 weight 총 합을 출력하도록 설정하였고, 
+print_wrr_stats를 통해 각 cpu마다 weight 값을 출력하도록 설정했습니다.  
+디버깅을 위해 print_cpu 함수에서 cfs, rt, dl stats는 출력하지 않도록 하고, print_wrr_stats를 호출하도록 하여 wrr 관련 정보만 출력하도록 했습니다.
+
+
+## 3. Investigation
+
+
+## 4. Lesson Learned

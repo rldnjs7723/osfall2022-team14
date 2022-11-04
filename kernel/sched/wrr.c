@@ -27,12 +27,9 @@ void trigger_load_balance_wrr(struct rq *rq)
     unsigned long last_time = wrr_rq->last_time;
     unsigned long curr_time = get_jiffies_64();
     struct wrr_rq *curr_rq;
-    struct wrr_rq *max_wrr_rq = NULL;
-    struct wrr_rq *min_wrr_rq = NULL;
     struct sched_wrr_entity *wrr_se = NULL;
     struct sched_wrr_entity *mig = NULL;
     struct task_struct *task;
-    unsigned long flags;
     unsigned int weight;
     unsigned int max_weight = 0;
 
@@ -42,7 +39,7 @@ void trigger_load_balance_wrr(struct rq *rq)
     rcu_read_lock();
 
     for_each_online_cpu(cpu) {
-        if (cpu) {
+        if (cpu != CPU_WITHOUT_WRR) {
             curr_rq = &cpu_rq(cpu)->wrr;
             if (curr_rq->total_weight > max_total_weight) {
             	max_cpu = cpu;
@@ -54,17 +51,14 @@ void trigger_load_balance_wrr(struct rq *rq)
             }
         }
     }
-    max_wrr_rq = &cpu_rq(max_cpu)->wrr;
-    min_wrr_rq = &cpu_rq(min_cpu)->wrr;
     rcu_read_unlock();
 
     if (max_cpu == min_cpu || !max_cpu || !min_cpu)
         return;
 
-    local_irq_save(flags);
     double_rq_lock(cpu_rq(max_cpu), cpu_rq(min_cpu));
 
-    list_for_each_entry(wrr_se, &max_wrr_rq->queue_head, run_list) {
+    list_for_each_entry(wrr_se, &(&cpu_rq(max_cpu)->wrr)->queue_head, run_list) {
         task = container_of(wrr_se, struct task_struct, wrr);
         weight = wrr_se->weight;
         
@@ -82,7 +76,6 @@ void trigger_load_balance_wrr(struct rq *rq)
         resched_curr(cpu_rq(min_cpu));
     }
     double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
-    local_irq_restore(flags);
 }
 
 static void enqueue_task_wrr(struct rq *rq, struct task_struct *p, int flags)
@@ -189,15 +182,17 @@ static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued)
 
     if (!wrr_policy(p->policy) || --wrr_se->time_slice)
         return;
-	list_del(&wrr_se->run_list);
-    wrr_se->time_slice = wrr_se->weight * HZ / 100;
-    list_add_tail(&wrr_se->run_list, &wrr_rq->queue_head);
-    resched_curr(rq);
+	else {
+        list_del(&wrr_se->run_list);
+        wrr_se->time_slice = wrr_se->weight * HZ / 100;
+        list_add_tail(&wrr_se->run_list, &wrr_rq->queue_head);
+        resched_curr(rq);
+    }
 }
 
 static unsigned int get_rr_interval_wrr(struct rq *rq, struct task_struct *task)
 {
-	return msecs_to_jiffies((&task->wrr)->weight *10);
+    return msecs_to_jiffies((&task->wrr)->weight *10);
 }
 
 static void prio_changed_wrr(struct rq *rq, struct task_struct *p, int oldprio)

@@ -711,12 +711,12 @@ do {									\
 #undef P
 
 	spin_lock_irqsave(&sched_debug_lock, flags);
-	print_cfs_stats(m, cpu);
-	print_rt_stats(m, cpu);
+	// print_cfs_stats(m, cpu);
+	// print_rt_stats(m, cpu);
 	print_wrr_stats(m, cpu);
-	print_dl_stats(m, cpu);
+	// print_dl_stats(m, cpu);
 
-	print_rq(m, rq, cpu);
+	// print_rq(m, rq, cpu);
 	spin_unlock_irqrestore(&sched_debug_lock, flags);
 	SEQ_printf(m, "\n");
 }

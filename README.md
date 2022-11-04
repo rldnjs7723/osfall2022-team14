@@ -36,7 +36,7 @@ rmmod /root/wrr_mod.ko
 ```
 
 ## 2. Define and implement WRR(Weighted Round-Robin) scheduler
-# 2-1 Define constants and implement data structures
+### 2-1 Define constants and implement data structures
 include/uapi/linux/sched.h 파일에는 SCHED_WRR이라는 constant를 7로서 새롭게 추가해주었고, include/linux/sched.h 파일에는 각 WRR entry를 의미하는 sched_wrr_entity 구조체를 선언한 뒤, wrr라는 인스턴스를 추가로 생성해주었습니다.
 
 ```
@@ -69,11 +69,11 @@ struct wrr_rq {
 };
 ```
 
-# 2-2 Change priorities of schedulers
+### 2-2 Change priorities of schedulers
 기존의 priority가 RT(Real Time) > CFS(Completely Fair Scheduler)였던 것을 RT > WRR > CFS로 변경해주기 위하여 kernel/sched/rt.c에서 rt_sched_class의 next를 wrr_sched_class로, kernel/sched/wrr.c에서 wrr_sched_class의 next를 fair_sched_class로 설정해주었습니다.
 
-# 2-3 System Call functions
+### 2-3 System Call functions
 
-# 2-4 Load-Balancing
+### 2-4 Load-Balancing
 
-# 2-5 Other functions
+### 2-5 Other functions

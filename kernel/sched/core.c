@@ -4035,15 +4035,15 @@ static int __sched_setscheduler(struct task_struct *p,
 	int queue_flags = DEQUEUE_SAVE | DEQUEUE_MOVE | DEQUEUE_NOCLOCK;
 	struct rq *rq;
 	
-	struct cpumask new_mask;
+	struct cpumask cpu_mask;
    	int cpu_num;
    	//one CPU run queue must be left empty: no WRR task should be running on it
 	if (wrr_policy(policy)) {
 		cpu_num = task_cpu(p);
 		// Exclude CPU 0
-		sched_getaffinity(p->pid, &new_mask); 
-		cpumask_clear_cpu(CPU_WITHOUT_WRR, &new_mask);
-		sched_setaffinity(p->pid, &new_mask);
+		sched_getaffinity(p->pid, &cpu_mask); 
+		cpumask_clear_cpu(CPU_WITHOUT_WRR, &cpu_mask);
+		sched_setaffinity(p->pid, &cpu_mask);
 	}
 
 	/* The pi code expects interrupts enabled */

@@ -93,5 +93,8 @@ obj-m += wrr_mod.o
 컴파일 하면 wrr_mod.ko 파일을 생성하며, 이를 rootfs에 넣어 /root/wrr_mod.ko에 위치하도록 설정했습니다.
 
 ### 2-4 Load-Balancing
+kernel/sched/core.c에서 sched_fork와 __setscheduler 함수에서 현재 프로세스의 policy에 따라 sched_class 구조체를 설정할 때 WRR이 제대로 작동하도록 수정하였습니다.  
+__sched_setscheduler 함수에서는 해당 pid의 cpu affinity mask를 받아 include/linux/sched.h에서 설정한 CPU_WITHOUT_WRR 값에 따라 0번 core에는 WRR과 관련된 프로세스가 실행되지 않도록 설정했습니다.  
+scheduler_tick 함수에서는 wrr.c에 정의된 trigger_load_balance_wrr 함수를 호출하여 매 tick마다 남은 시간을 확인해서 2000ms 마다 load_balance를 수행하도록 설정했습니다.
 
 ### 2-5 Other functions

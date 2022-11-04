@@ -117,11 +117,12 @@ static struct task_struct *pick_next_task_wrr(struct rq *rq, struct task_struct 
 {
     struct wrr_rq *wrr_rq = &rq->wrr;
     struct sched_wrr_entity *picked;
+    struct task_struct *p;
     if (list_empty(&wrr_rq->queue_head))
         return NULL;
 
     picked = list_first_entry(&wrr_rq->queue_head, struct sched_wrr_entity, run_list);
-    struct task_struct *p = container_of(picked, struct task_struct, wrr);
+    p = container_of(picked, struct task_struct, wrr);
 
     return p;
 }
@@ -182,7 +183,7 @@ static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued)
 
     if (!wrr_policy(p->policy) || --wrr_se->time_slice)
         return;
-    else {
+	else {
         list_del(&wrr_se->run_list);
         wrr_se->time_slice = wrr_se->weight * HZ / 100;
         list_add_tail(&wrr_se->run_list, &wrr_rq->queue_head);
@@ -192,7 +193,6 @@ static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued)
 
 static unsigned int get_rr_interval_wrr(struct rq *rq, struct task_struct *task)
 {
-    return msecs_to_jiffies((&task->wrr)->weight *10);
 }
 
 static void prio_changed_wrr(struct rq *rq, struct task_struct *p, int oldprio)
@@ -213,10 +213,6 @@ static void migrate_task_rq_wrr(struct task_struct *p)
 
 static void task_fork_wrr(struct task_struct *p)
 {
-    if (!p)
-        return;
-    p->wrr.weight = p->real_parent->wrr.weight;
-    p->wrr.time_slice = p->wrr.weight * HZ / 100;
 }
 
 static void task_dead_wrr(struct task_struct *p) 

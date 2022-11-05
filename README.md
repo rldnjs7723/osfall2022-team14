@@ -97,14 +97,7 @@ kernel/sched/core.c에서 sched_fork와 __setscheduler 함수에서 현재 프�
 __sched_setscheduler 함수에서는 해당 pid의 cpu affinity mask를 받아 include/linux/sched.h에서 설정한 CPU_WITHOUT_WRR 값에 따라 0번 core에는 WRR과 관련된 프로세스가 실행되지 않도록 설정했습니다.  
 scheduler_tick 함수에서는 wrr.c에 정의된 trigger_load_balance_wrr 함수를 호출하여 매 tick마다, last time으로부터 curren time까지 2000ms(2 * HZ)가 지났는지 확인해서, 지났다면 load_balance를 수행하도록 설정했습니다. load_balance를 수행하는 과정은, 먼저 lock을 잡고 total_weight이 가장 큰 run queue와 가장 작은 run queue를 찾은 뒤 그 rq_max에서 다시 조건에 맞는 weight이 가장 큰 task를 찾아 rq_min으로 옮기는 것입니다.
 
-### 2.5 Debug
-sched_debug와 schedstat의 내용을 확인하기 위해 arch/arm64/configs/tizen_bcmrpi3_defconfig에서 CONFIG_SCHED_DEBUG와 CONFIG_SCHEDSTATS의 값을 y로 변경했습니다.
-
-kernel/sched/debug.c에서 print_wrr_rq를 통해 주어진 cpu core의 run queue에 할당된 프로세스의 weight 총 합을 출력하도록 설정하였고, 
-print_wrr_stats를 통해 각 cpu마다 weight 값을 출력하도록 설정했습니다.  
-디버깅을 위해 print_cpu 함수에서 cfs, rt, dl stats는 출력하지 않도록 하고, print_wrr_stats를 호출하도록 하여 wrr 관련 정보만 출력하도록 했습니다.
-
-### 2.6 Functions for member function pointers of wrr_sched_class
+### 2.5 Functions for member function pointers of wrr_sched_class
 kernel/sched/wrr.c 파일에는  trigger_load_balance_wrr뿐만 아니라 wrr_sched_class 초기화 시에 멤버 함수 포인터들이 호출하는 함수 중 필요한 것들을 정의했습니다. 그 중에서도 구현한 함수는 다음과 같습니다.
 
 ```
@@ -128,6 +121,13 @@ WRR policy를 따르는 CPU 중 total weight이 가장 작은 CPU 번호를 반�
 
 #### task_tick_wrr
 scheduler_tick 함수에서 매 tick마다 호출되는 함수로, 매 tick마다 time_slice를 감소시켜 0으로 만들면(즉, time_slice에 해당하는 시간이 흐르면) 본 task를 run queue의 tail로 이동시킵니다. 그리고 다시 스케줄링합니다.(task의 finish에 관해서는 dequeue_task_wrr 함수가 관여하지, 이 함수는 관여하지 않습니다.)
+
+### 2.6 Debug
+sched_debug와 schedstat의 내용을 확인하기 위해 arch/arm64/configs/tizen_bcmrpi3_defconfig에서 CONFIG_SCHED_DEBUG와 CONFIG_SCHEDSTATS의 값을 y로 변경했습니다.
+
+kernel/sched/debug.c에서 print_wrr_rq를 통해 주어진 cpu core의 run queue에 할당된 프로세스의 weight 총 합을 출력하도록 설정하였고, 
+print_wrr_stats를 통해 각 cpu마다 weight 값을 출력하도록 설정했습니다.  
+디버깅을 위해 print_cpu 함수에서 cfs, rt, dl stats는 출력하지 않도록 하고, print_wrr_stats를 호출하도록 하여 wrr 관련 정보만 출력하도록 했습니다.
 
 ## 3. Investigation
 실험은 test1.c를 컴파일하여 rootfs에 넣은 /root/test1 파일을 통해 진행했습니다.  

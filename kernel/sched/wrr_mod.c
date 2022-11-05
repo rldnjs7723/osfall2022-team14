@@ -23,8 +23,8 @@ static int wrr_mod_init(void) {
 }
 static void wrr_mod_exit(void) {
     printk("module exit\n");
-    compat_sys_call_table[398] = legacy_syscall_prevset;
-    compat_sys_call_table[399] = legacy_syscall_prevget;
+    compat_sys_call_table[SCHED_SETWEIGHT] = legacy_syscall_prevset;
+    compat_sys_call_table[SCHED_GETWEIGHT] = legacy_syscall_prevget;
 }
 
 module_init(wrr_mod_init);

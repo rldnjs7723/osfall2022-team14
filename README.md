@@ -36,7 +36,7 @@ rmmod /root/wrr_mod.ko
 ```
 
 ## 2. Define and implement WRR(Weighted Round-Robin) scheduler
-### 2-1 Define constants and implement data structures
+### 2.1 Define constants and implement data structures
 include/uapi/linux/sched.h 파일에는 SCHED_WRR이라는 constant를 7로서 새롭게 추가해주었고, include/linux/sched.h 파일에는 각 WRR entry를 의미하는 sched_wrr_entity 구조체를 선언한 뒤, wrr라는 인스턴스를 추가로 생성해주었습니다.
 
 ```
@@ -69,10 +69,10 @@ struct wrr_rq {
 };
 ```
 
-### 2-2 Change priorities of schedulers
+### 2.2 Change priorities of schedulers
 기존의 priority가 RT(Real Time) > CFS(Completely Fair Scheduler)였던 것을 RT > WRR > CFS로 변경해주기 위하여 kernel/sched/rt.c에서 rt_sched_class의 next를 wrr_sched_class로, kernel/sched/wrr.c에서 wrr_sched_class의 next를 fair_sched_class로 설정해주었습니다.
 
-### 2-3 System Call functions
+### 2.3 System Call functions
 sched_setweight, sched_getweight 두 가지 System Call을 추가할 때는 Project 1에서 했던 것처럼 Dynamic하게 설정했습니다.  
 398번, 399번 entry에 syscall을 추가하였으므로 arch/arm64/include/asm/unistd.h에서 __NR_compat_syscalls의 값을 400으로 늘렸습니다.
 
@@ -92,18 +92,42 @@ obj-m += wrr_mod.o
 ```
 컴파일 하면 wrr_mod.ko 파일을 생성하며, 이를 rootfs에 넣어 /root/wrr_mod.ko에 위치하도록 설정했습니다.
 
-### 2-4 Load-Balancing
+### 2.4 Load-Balancing
 kernel/sched/core.c에서 sched_fork와 __setscheduler 함수에서 현재 프로세스의 policy에 따라 sched_class 구조체를 설정할 때 WRR이 제대로 작동하도록 수정하였습니다.  
 __sched_setscheduler 함수에서는 해당 pid의 cpu affinity mask를 받아 include/linux/sched.h에서 설정한 CPU_WITHOUT_WRR 값에 따라 0번 core에는 WRR과 관련된 프로세스가 실행되지 않도록 설정했습니다.  
-scheduler_tick 함수에서는 wrr.c에 정의된 trigger_load_balance_wrr 함수를 호출하여 매 tick마다 남은 시간을 확인해서 2000ms 마다 load_balance를 수행하도록 설정했습니다.
+scheduler_tick 함수에서는 wrr.c에 정의된 trigger_load_balance_wrr 함수를 호출하여 매 tick마다, last time으로부터 curren time까지 2000ms(2 * HZ)가 지났는지 확인해서, 지났다면 load_balance를 수행하도록 설정했습니다. load_balance를 수행하는 과정은, 먼저 lock을 잡고 total_weight이 가장 큰 run queue와 가장 작은 run queue를 찾은 뒤 그 rq_max에서 다시 조건에 맞는 weight이 가장 큰 task를 찾아 rq_min으로 옮기는 것입니다.
 
-### 2-5 Debug
+### 2.5 Functions for member function pointers of wrr_sched_class
+kernel/sched/wrr.c 파일에는  trigger_load_balance_wrr뿐만 아니라 wrr_sched_class 초기화 시에 멤버 함수 포인터들이 호출하는 함수 중 필요한 것들을 정의했습니다. 그 중에서도 구현한 함수는 다음과 같습니다.
+
+```
+static void enqueue_task_wrr(struct rq *rq, struct task_struct *p, int flags)
+static void dequeue_task_wrr(struct rq *rq, struct task_struct *p, int flags)
+static struct task_struct *pick_next_task_wrr(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
+static int select_task_rq_wrr(struct task_struct *p, int cpu, int sd_flag, int flags)
+static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued)
+```
+#### enqueue_task_wrr
+새로운 task가 생성되었을 때 실행되는 함수로, 본 task를 초기화한 뒤에 run queue의 tail에 추가하면서, total weight을 증가시킵니다. scheduler entry에 대해서는, time slice를 주어진 weight 에 맞게 설정하고, on_rq 또한 켭니다. 그리고 다시 스케줄링합니다.
+
+#### dequeue_task_wrr
+기존의 task가 종료될 때 실행되는 함수로, 본 task를 run_queue에서 제거한 뒤에 초기화하면서, total weight을 감소시킵니다. 그리고 다시 스케줄링합니다.
+
+#### pick_next_task_wrr
+다음 task 수행을 위해, run queue가 비었는지 확인하고, 비어있지 않다면 그 queue의 front의 task를 반환하는 함수입니다.
+
+#### select_task_rq_wrr
+WRR policy를 따르는 CPU 중 total weight이 가장 작은 CPU 번호를 반환하는 함수입니다.
+
+#### task_tick_wrr
+scheduler_tick 함수에서 매 tick마다 호출되는 함수로, 매 tick마다 time_slice를 감소시켜 0으로 만들면(즉, time_slice에 해당하는 시간이 흐르면) 본 task를 run queue의 tail로 이동시킵니다. 그리고 다시 스케줄링합니다.(task의 finish에 관해서는 dequeue_task_wrr 함수가 관여하지, 이 함수는 관여하지 않습니다.)
+
+### 2.6 Debug
 sched_debug와 schedstat의 내용을 확인하기 위해 arch/arm64/configs/tizen_bcmrpi3_defconfig에서 CONFIG_SCHED_DEBUG와 CONFIG_SCHEDSTATS의 값을 y로 변경했습니다.
 
 kernel/sched/debug.c에서 print_wrr_rq를 통해 주어진 cpu core의 run queue에 할당된 프로세스의 weight 총 합을 출력하도록 설정하였고, 
 print_wrr_stats를 통해 각 cpu마다 weight 값을 출력하도록 설정했습니다.  
 디버깅을 위해 print_cpu 함수에서 cfs, rt, dl stats는 출력하지 않도록 하고, print_wrr_stats를 호출하도록 하여 wrr 관련 정보만 출력하도록 했습니다.
-
 
 ## 3. Investigation
 실험은 test1.c를 컴파일하여 rootfs에 넣은 /root/test1 파일을 통해 진행했습니다.  

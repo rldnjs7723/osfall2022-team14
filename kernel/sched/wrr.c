@@ -19,8 +19,8 @@ void init_wrr_rq(struct wrr_rq *wrr_rq)
 void trigger_load_balance_wrr(struct rq *rq)
 {
     int cpu;
-    int max_cpu = 0;
-    int min_cpu = 0;
+    int rq_max = 0;
+    int rq_min = 0;
     unsigned int min_total_weight = -1;
     unsigned int max_total_weight = 0;
     struct wrr_rq *wrr_rq = &rq->wrr;
@@ -42,27 +42,27 @@ void trigger_load_balance_wrr(struct rq *rq)
         if (cpu != CPU_WITHOUT_WRR) {
             curr_rq = &cpu_rq(cpu)->wrr;
             if (curr_rq->total_weight > max_total_weight) {
-            	max_cpu = cpu;
+            	rq_max = cpu;
             	max_total_weight = curr_rq->total_weight;
             }
             if (curr_rq->total_weight < min_total_weight) {
-            	min_cpu = cpu;
+            	rq_min = cpu;
             	min_total_weight = curr_rq->total_weight;
             }
         }
     }
     rcu_read_unlock();
 
-    if (max_cpu == min_cpu || !max_cpu || !min_cpu)
+    if (rq_max == rq_min || !rq_max || !rq_min)
         return;
 
-    double_rq_lock(cpu_rq(max_cpu), cpu_rq(min_cpu));
+    double_rq_lock(cpu_rq(rq_max), cpu_rq(rq_min));
 
-    list_for_each_entry(wrr_se, &(&cpu_rq(max_cpu)->wrr)->queue_head, run_list) {
+    list_for_each_entry(wrr_se, &(&cpu_rq(rq_max)->wrr)->queue_head, run_list) {
         task = container_of(wrr_se, struct task_struct, wrr);
         weight = wrr_se->weight;
         
-        if (cpu_rq(max_cpu)->curr != task && cpumask_test_cpu(max_cpu, &task->cpus_allowed)
+        if (cpu_rq(rq_max)->curr != task && cpumask_test_cpu(rq_max, &task->cpus_allowed)
         && max_total_weight - weight >= min_total_weight + weight && weight > max_weight) {
         	mig = wrr_se;
         	max_weight = weight;
@@ -70,12 +70,12 @@ void trigger_load_balance_wrr(struct rq *rq)
     }
     if (mig) {
         task = container_of(mig, struct task_struct, wrr);
-        deactivate_task(cpu_rq(max_cpu), task, 0);
-        set_task_cpu(task, min_cpu);
-        activate_task(cpu_rq(min_cpu), task, 0);
-        resched_curr(cpu_rq(min_cpu));
+        deactivate_task(cpu_rq(rq_max), task, 0);
+        set_task_cpu(task, rq_min);
+        activate_task(cpu_rq(rq_min), task, 0);
+        resched_curr(cpu_rq(rq_min));
     }
-    double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
+    double_rq_unlock(cpu_rq(rq_max), cpu_rq(rq_min));
 }
 
 static void enqueue_task_wrr(struct rq *rq, struct task_struct *p, int flags)

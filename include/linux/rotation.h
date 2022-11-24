@@ -2,6 +2,15 @@
 #include <linux/types.h>
 #include <linux/sched.h>
 
+#define SET_ROTATION      398
+#define ROTLOCK_READ      399
+#define ROTLOCK_WRITE     400
+#define ROTUNLOCK_READ    401
+#define ROTUNLOCK_WRITE   402
+
+#define INCREMENT 0
+#define DECREMENT 1
+
 typedef struct __rotlock_t__ {
     pid_t pid;
     int degree;

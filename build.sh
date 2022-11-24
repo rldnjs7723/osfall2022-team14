@@ -12,11 +12,12 @@ echo "-----------Move Image File-----------"
 mv boot.img modules.img ../tizen-image
 tar xvzf tizen-unified_20181024.1_iot-headless-2parts-armv7l-rpi3.tar.gz -C ../tizen-image
 echo "-----------Compile Test File-----------"
-#arm-linux-gnueabi-gcc -I/include test/test.c -o test/test
-echo "-----------Move Test File & Module to rootfs-----------"
+arm-linux-gnueabi-gcc -I/include test/rotd.c -o test/rotd
+arm-linux-gnueabi-gcc -I/include test/selector.c -o test/selector
+arm-linux-gnueabi-gcc -I/include test/trial.c -o test/trial
+echo "-----------Move Test File-----------"
 sudo mount ../tizen-image/rootfs.img ../tizen-image/mnt_dir
-sudo cp ./kernel/rot_mod.ko ../tizen-image/mnt_dir/root
-#sudo cp ./test/test ../tizen-image/mnt_dir/root
+sudo cp ./test/rotd ./test/selector ./test/trial ../tizen-image/mnt_dir/root
 echo "-----------Wait Unmount-----------"
 sleep 5
 sudo umount ../tizen-image/mnt_dir

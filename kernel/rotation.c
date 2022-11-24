@@ -4,6 +4,7 @@
 #include <linux/mutex.h>
 #include <linux/wait.h>
 #include <linux/syscalls.h>
+#include <linux/rotation.h>
 
 static int rotation = 0;
 static int write_waiting_cnt[360] = {0, };
@@ -58,6 +59,22 @@ int check_rotation(int rotation, int degree, int range) {
     return (rotation >= degree - range - 360 && rotation <= degree + range - 360)
         || (rotation >= degree - range && rotation <= degree + range)
         || (rotation >= degree - range + 360 && rotation <= degree + range + 360);
+}
+
+void modify_waiting_cnt(int degree, int range, int type)
+{   int i;
+    int pos;
+    pos = degree - range;
+
+    if(pos < 0)
+        pos += 360;
+
+    for(i = 0; i <= range*2; i++)
+    {
+        if (pos >= 360)
+            pos -= 360;
+        write_waiting_cnt[pos++] += 1 - 2*type;
+    }
 }
 
 rotlock_t* init_rotlock(int degree, int range) {
@@ -125,7 +142,7 @@ void exit_rotlock(struct task_struct *p) {
     mutex_unlock(&mutex);
 }
 
-long set_rotation(int degree) {
+SYSCALL_DEFINE1(set_rotation, int, degree) {
     int cnt = 0;
     if (!check_error(degree, 1)) return -1;
     mutex_lock(&mutex);
@@ -135,7 +152,7 @@ long set_rotation(int degree) {
     return cnt;
 }
 
-long rotlock_read(int degree, int range) {
+SYSCALL_DEFINE2(rotlock_read, int, degree, int, range) {
     rotlock_t *rotlock;
 
     if (!check_error(degree, range)) return -1;
@@ -155,7 +172,7 @@ long rotlock_read(int degree, int range) {
     return 0;
 }
 
-long rotlock_write(int degree, int range) {
+SYSCALL_DEFINE2(rotlock_write, int, degree, int, range) {
     rotlock_t *rotlock;
     int i = degree - range;
 
@@ -185,7 +202,7 @@ long rotlock_write(int degree, int range) {
     return 0;
 }
 
-long rotunlock_read(int degree, int range) {
+SYSCALL_DEFINE2(rotunlock_read, int, degree, int, range) {
     int cnt;
 
     if (!check_error(degree, range)) return -1;
@@ -202,7 +219,7 @@ long rotunlock_read(int degree, int range) {
     return 0;
 }
 
-long rotunlock_write(int degree, int range) {
+SYSCALL_DEFINE2(rotunlock_write, int, degree, int, range) {
     int cnt;
 
     if (!check_error(degree, range)) return -1;
@@ -216,10 +233,3 @@ long rotunlock_write(int degree, int range) {
     mutex_unlock(&mutex);
     return 0;
 }
-
-EXPORT_SYMBOL(exit_rotlock);
-EXPORT_SYMBOL(set_rotation);
-EXPORT_SYMBOL(rotlock_read);
-EXPORT_SYMBOL(rotlock_write);
-EXPORT_SYMBOL(rotunlock_read);
-EXPORT_SYMBOL(rotunlock_write);

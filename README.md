@@ -158,3 +158,7 @@ write_lock을 기다리는 프로세스의 수를 관리할 때 rotation_cnt_wri
 ### 4.2
 프로세스를 Block하고자 할 때 wait_queue를 사용하지 않고 구현하는 과정에서 프로세스가 깨어나지 않는 등 문제가 발생하는 경우가 많았습니다. 
 이번 프로젝트를 통해 프로세스를 sleep 시키고 깨우는 작업은 이미 구현되어 있는 wait_queue 관련 함수를 제대로 사용할 때 더 쉽고 안전하게 구현할 수 있음을 배웠습니다.
+
+### 4.3
+이전까지 Dynamic하게 System Call을 구현했기 때문에 insmod 명령을 추가로 입력하지 않고 커널 부팅 시 module을 insert 할 수 있는 방법을 찾아보았지만 제대로 작동하지 않아 
+Static하게 System Call을 구현했습니다. 이번 프로젝트를 통해 module insert를 하지 않고 system call을 적용할 수 있는 방법에 대해 배웠습니다.

@@ -64,11 +64,11 @@ void count_rotation(int degree, int range, int change) {
 }
 
 // Compare rotation with read/write_lock range and take lock
-int get_lock(int prev_read) {
+int get_lock(int prev_lock) {
     rotlock_t *curr;
     int cnt = 0;
 
-    if (prev_read && rotation_cnt_write_waiting[rotation] && list_empty(&write_acquired) && list_empty(&read_acquired)) {
+    if (prev_lock == PREV_READ && rotation_cnt_write_waiting[rotation] && list_empty(&write_acquired) && list_empty(&read_acquired)) {
         // take write_lock after release read_lock
         list_for_each_entry(curr, &write_waiting, node) {
             if (check_rotation(rotation, curr->degree, curr->range)) {
@@ -172,7 +172,7 @@ SYSCALL_DEFINE1(set_rotation, int, degree) {
     mutex_lock(&mutex);
     rotation = degree;
     // printk("current rotation: %d\n", rotation);
-    
+
     // Allow a single blocked writer to take the lock first
     cnt = get_lock(PREV_READ);
     mutex_unlock(&mutex);

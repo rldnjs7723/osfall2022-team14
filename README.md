@@ -140,11 +140,11 @@ write_waiting의 경우 count_rotation을 통해 wait_lock의 count를 감소시
 
 ## 3. Selector and trial test file
 ### 3.1 selector.c
-사용자로부터 number(num)을 입력받고, 1초마다 다음의 과정을 수행합니다.
+사용자로부터 number(num)을 입력받고, 1초마다 다음의 과정을 수행합니다.   
  먼저 degree = 90, range = 90에 대하여 rotlock_write를 시스템콜하며 lock을 잡고 "integer" 파일을 열어(없다면 생성) 입력받은 num을 저장합니다. selector가 num을 저장했음을 출력하면서 num을 증가시키고 rotunlock_write 시스템콜로 lock을 해제하면서 1초 후 다시 loop을 돕니다.
 
 ### 3.2 trial.c
-사용자로부터 identifier(process_num)을 입력받고, 1초마다 다음의 과정을 수행합니다.
+사용자로부터 identifier(process_num)을 입력받고, 1초마다 다음의 과정을 수행합니다.   
  먼저 degree = 90, range = 90에 대하여 rotlock_read를 시스템콜하며 lock을 잡고 이미 존재하는 "integer" 파일을 열어(없다면 생성될 때까지 대기) num을 읽고 prime_factor를 수행합니다. 각 process를 구분할 수 있도록 identifier와 함께 결과를 출력하고, rotunlock_read를 시스템콜로 lock을 해제하면서 1초 후 다시 loop을 돕니다.
 
 ### 3.3 result

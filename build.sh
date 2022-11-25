@@ -18,6 +18,8 @@ arm-linux-gnueabi-gcc -I/include test/trial.c -o test/trial
 echo "-----------Move Test File-----------"
 sudo mount ../tizen-image/rootfs.img ../tizen-image/mnt_dir
 sudo cp ./test/rotd ./test/selector ./test/trial ../tizen-image/mnt_dir/root
+echo "-----------Change fstab Permission-----------"
+sudo cp ./fstab ../tizen-image/mnt_dir/etc/
 echo "-----------Wait Unmount-----------"
 sleep 5
 sudo umount ../tizen-image/mnt_dir

@@ -15,7 +15,8 @@ git clone -b proj3 https://github.com/rldnjs7723/osfall2022-team14.git
 ```
 cd osfall2022-team14
 ```
-kernel 폴더 내부에 위치한 build.sh를 실행하면 커널 파일 빌드를 수행하고, rootfs로 테스트 파일을 이동합니다.
+kernel 폴더 내부에 위치한 build.sh를 실행하면 커널 파일 빌드를 수행하고, rootfs로 테스트 파일을 이동합니다.  
+또한, fstab에서 read-only 옵션을 제거하여 별도의 mount 옵션을 입력하지 않아도 됩니다.
 ```
 sudo ./build.sh
 ```
@@ -23,13 +24,7 @@ sudo ./build.sh
 ```
 sudo ./qemu.sh
 ```
-
-로그인 후 tizen 안에서 테스트 파일을 실행하려면
-다음 명령어로 쓰기 권한을 설정하고 test 파일을 실행하면 됩니다.
-```
-mount -o rw,remount /dev/vdd /
-```
-주어진 rotd의 실행파일과 selector, trial 테스트 파일은 root 폴더에 위치해 있습니다.
+로그인 후 tizen 안에서 root 폴더에 위치한 rotd, selector, trial 파일을 통해 테스트를 수행할 수 있습니다.
 ```
 /root/rotd
 /root/selector (number) & 

@@ -1,10 +1,10 @@
+#include <linux/rotation.h>
 #include <linux/sched.h>
+#include <linux/syscalls.h>
 #include <linux/slab.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
 #include <linux/wait.h>
-#include <linux/syscalls.h>
-#include <linux/rotation.h>
 
 static int rotation = 0;
 static int write_waiting_cnt[360] = {0, };
@@ -61,20 +61,40 @@ int check_rotation(int rotation, int degree, int range) {
         || (rotation >= degree - range + 360 && rotation <= degree + range + 360);
 }
 
-void modify_waiting_cnt(int degree, int range, int type)
-{   int i;
-    int pos;
-    pos = degree - range;
+void exit_rotlock(struct task_struct *p) {
+    pid_t pid = p->pid;
+    rotlock_t *curr;
+    rotlock_t *next;
+    int i;
 
-    if(pos < 0)
-        pos += 360;
+    mutex_lock(&mutex);
 
-    for(i = 0; i <= range*2; i++)
-    {
-        if (pos >= 360)
-            pos -= 360;
-        write_waiting_cnt[pos++] += 1 - 2*type;
+    list_for_each_entry_safe(curr, next, &read_waiting, node) {
+        if (curr->pid == pid) {
+            list_del(&curr->node);
+        }
     }
+    list_for_each_entry_safe(curr, next, &write_waiting, node) {
+        if (curr->pid == pid) {
+            list_del(&curr->node);
+            for (i = (curr->degree - curr->range + 360) % 360; i != curr->degree + curr->range + 1; i = (i + 1) % 360)
+                write_waiting_cnt[i] = 0;
+        }
+    }
+    list_for_each_entry_safe(curr, next, &read_acquired, node) {
+        if (curr->pid == pid) {
+            list_del(&curr->node);
+        }
+    }
+    if (list_empty(&read_acquired)) {
+        get_lock();
+    }
+    curr = list_first_entry(&write_acquired, rotlock_t, node);
+    if (curr->pid == pid) {
+        list_del(&curr->node);
+        get_lock();
+    }
+    mutex_unlock(&mutex);
 }
 
 rotlock_t* init_rotlock(int degree, int range) {
@@ -95,51 +115,13 @@ int find_node_and_del(int degree, int range, struct list_head* head) {
     int cnt = 0;
 
     list_for_each_entry_safe(curr, next, head, node) {
-        if(curr->pid == current->pid
-            && curr->degree == degree && curr->range == range) {
+        if (curr->pid == current->pid && curr->degree == degree && curr->range == range) {
             list_del(&curr->node);
             cnt++;
             kfree(curr);
         }
     }
     return cnt;
-}
-
-void exit_rotlock(struct task_struct *p) {
-    pid_t pid = p->pid;
-    rotlock_t *curr;
-    rotlock_t *next;
-
-    mutex_lock(&mutex);
-
-    list_for_each_entry_safe(curr, next, &read_waiting, node) {
-        if(curr->pid == pid) {
-            list_del(&curr->node);
-        }
-    }
-    list_for_each_entry_safe(curr, next, &write_waiting, node) {
-        if(curr->pid == pid) {
-            list_del(&curr->node);
-            modify_waiting_cnt(curr->degree, curr->range, DECREMENT);
-        }
-    }
-    list_for_each_entry_safe(curr, next, &read_acquired, node) {
-        if(curr->pid == pid) {
-            list_del(&curr->node);
-        }
-    }
-
-    if(list_empty(&read_acquired)) {
-        get_lock();
-    }
-
-    curr = list_first_entry(&write_acquired, rotlock_t, node);
-    if(curr->pid == pid) {
-        list_del(&curr->node);
-        get_lock();
-    }
-    
-    mutex_unlock(&mutex);
 }
 
 SYSCALL_DEFINE1(set_rotation, int, degree) {
@@ -174,19 +156,19 @@ SYSCALL_DEFINE2(rotlock_read, int, degree, int, range) {
 
 SYSCALL_DEFINE2(rotlock_write, int, degree, int, range) {
     rotlock_t *rotlock;
-    int i = degree - range;
+    int i;
 
     if (!check_error(degree, range)) return -1;
 
     rotlock = init_rotlock(degree, range);
     mutex_lock(&mutex);    
-    /*if (check_rotation(rotation, degree, range) && list_empty(&read_acquired) && list_empty(&write_acquired)) {
+    if (check_rotation(rotation, degree, range) && list_empty(&read_acquired) && list_empty(&write_acquired)) {
         list_add_tail(&rotlock->node, &write_acquired);
         mutex_unlock(&mutex);
         return 0;
-    }*/
+    }
     list_add_tail(&rotlock->node, &write_waiting);
-    for (i = (i + 360) % 360; i != degree + range + 1; i = (i + 1) % 360)
+    for (i = (degree - range + 360) % 360; i != degree + range + 1; i = (i + 1) % 360)
         write_waiting_cnt[i]++;
     while (!check_rotation(rotation, degree, range) || !list_empty(&read_acquired) || !list_empty(&write_acquired)) {
         mutex_unlock(&mutex);
@@ -194,7 +176,7 @@ SYSCALL_DEFINE2(rotlock_write, int, degree, int, range) {
         while (!rotlock->cond) schedule();
         mutex_lock(&mutex);
     }
-    for (i = (i + 360) % 360; i != degree + range + 1; i = (i + 1) % 360)
+    for (i = (degree - range + 360) % 360; i != degree + range + 1; i = (i + 1) % 360)
         write_waiting_cnt[i]--;
     list_del(&rotlock->node);
     list_add_tail(&rotlock->node, &write_acquired);
@@ -214,7 +196,6 @@ SYSCALL_DEFINE2(rotunlock_read, int, degree, int, range) {
     if (list_empty(&read_acquired)) {
         get_lock();
     }
-
     mutex_unlock(&mutex);
     return 0;
 }

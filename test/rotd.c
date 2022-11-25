@@ -1,6 +1,5 @@
 #define SYSCALL_SET_ROTATION 398
 
-#include <stdio.h>
 #include <signal.h>
 #include <sys/syscall.h>
 #include <sys/stat.h>
@@ -28,7 +27,6 @@ void sensor()
 	while (notFinished) {
 		degree = (degree + 30) % 360;
 		syscall(SYSCALL_SET_ROTATION, degree);
-        //printf("current degree is : %d\n", degree);
 		sleep(2);
 	}
 }

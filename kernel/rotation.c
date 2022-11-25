@@ -196,7 +196,7 @@ SYSCALL_DEFINE2(rotlock_read, int, degree, int, range) {
     list_add_tail(&rotlock->node, &read_waiting);
     while (!check_rotation(rotation, degree, range) || rotation_cnt_write_waiting[rotation] || !list_empty(&write_acquired)) {
         mutex_unlock(&mutex);
-        while (!rotlock->cond) wait(rotlock);
+        wait(rotlock);
         mutex_lock(&mutex);
     }
     list_del(&rotlock->node);
@@ -227,7 +227,7 @@ SYSCALL_DEFINE2(rotlock_write, int, degree, int, range) {
         rotlock->cond = 0;
 
         mutex_unlock(&mutex);
-        while (!rotlock->cond) wait(rotlock);
+        wait(rotlock);
         mutex_lock(&mutex);
     }
     // Take Lock

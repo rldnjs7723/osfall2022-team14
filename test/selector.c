@@ -8,27 +8,24 @@
 
 
 int main(int argc, char *argv[]){
-	int num;
-    FILE* fp;
-
-	if(argc!=2)
-	{
-		printf("error: use only one argument\n");
-		return 0;
+	if (argc != 2) {
+		printf("Type \"/root/selector [start num]\"\n");
+		return -1;
 	}
-	num=atoi(argv[1]);
+	int num = atoi(argv[1]);
+    	FILE *fp;
+	
 	while(1) {
-		syscall(ROTLOCK_WRITE, 90, 90);
-		fp=fopen("integer","w");
-		if(fp==0)
-		{
-			printf("error: unable to open the file\n");
-			return 0;
-		}
+		if (syscall(ROTLOCK_WRITE, 90, 90) < 0)
+			return -1;
+		if (!(fp = fopen("integer","w")))
+			return -1;
 		fprintf(fp, "%d", num);
 		fclose(fp);
 		printf("selector: %d\n", num++);
-		syscall(ROTUNLOCK_WRITE, 90, 90);
-        sleep(1);
+		if (syscall(ROTUNLOCK_WRITE, 90, 90) < 0)
+			return -1;
+        	sleep(1);
 	}
+	return 0;
 }

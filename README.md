@@ -139,7 +139,89 @@ write_waiting의 경우 count_rotation을 통해 wait_lock의 count를 감소시
 
 
 ## 3. Selector and trial test file
+### 3.1 selector.c
+사용자로부터 number(num)을 입력받고, 1초마다 다음의 과정을 수행합니다.   
+ 먼저 degree = 90, range = 90에 대하여 rotlock_write를 시스템콜하며 lock을 잡고 "integer" 파일을 열어(없다면 생성) 입력받은 num을 저장합니다. selector가 num을 저장했음을 출력하면서 num을 증가시키고 rotunlock_write 시스템콜로 lock을 해제하면서 1초 후 다시 loop을 돕니다.
 
+### 3.2 trial.c
+사용자로부터 identifier(process_num)을 입력받고, 1초마다 다음의 과정을 수행합니다.   
+ 먼저 degree = 90, range = 90에 대하여 rotlock_read를 시스템콜하며 lock을 잡고 이미 존재하는 "integer" 파일을 열어(없다면 생성될 때까지 대기) num을 읽고 prime_factor를 수행합니다. 각 process를 구분할 수 있도록 identifier와 함께 결과를 출력하고, rotunlock_read를 시스템콜로 lock을 해제하면서 1초 후 다시 loop을 돕니다.
+
+### 3.3 result
+rotd는 2초마다 rotation을 30씩 증가시키므로 selector와 trial 모두 24초를 주기로 14번 출력하고 10번 쉬는 것을 반복합니다.  
+다음 결과를 보면 trial 0과 1은 서로 순서가 바뀌어 실행되는 경우가 있지만, writer와 reader가 번갈아서 주도권을 잡을 수 있도록 설정하였으므로 selector 다음에 trial이 실행되어 writer의 starvation이 일어나지 않음을 볼 수 있습니다.  
+또한 selector가 7499의 값을 가진 이후 rotation이 180보다 커졌기에 잠깐 동안 쉬었으며, 7500부터 다시 rotation이 0이 되어 재개되는 것을 볼 수있습니다.
+```
+root:~> ./rotd
+root:~> ./selector 7492 & ./trial 0 & ./trial 1 &
+[1] 1061
+[2] 1062
+selector: 7492
+[3] 1063
+root:~> trial-1: 7492 = 2 * 2 * 1873
+trial-0: 7492 = 2 * 2 * 1873
+selector: 7493
+trial-1: 7493 = 59 * 127
+trial-0: 7493 = 59 * 127
+selector: 7494
+trial-1: 7494 = 2 * 3 * 1249
+trial-0: 7494 = 2 * 3 * 1249
+selector: 7495
+trial-1: 7495 = 5 * 1499
+trial-0: 7495 = 5 * 1499
+selector: 7496
+trial-1: 7496 = 2 * 2 * 2 * 937
+trial-0: 7496 = 2 * 2 * 2 * 937
+selector: 7497
+trial-1: 7497 = 3 * 3 * 7 * 7 * 17
+trial-0: 7497 = 3 * 3 * 7 * 7 * 17
+selector: 7498
+trial-1: 7498 = 2 * 23 * 163
+trial-0: 7498 = 2 * 23 * 163
+selector: 7499
+selector: 7500
+trial-1: 7500 = 2 * 2 * 3 * 5 * 5 * 5 * 5
+trial-0: 7500 = 2 * 2 * 3 * 5 * 5 * 5 * 5
+selector: 7501
+trial-1: 7501 = 13 * 577
+trial-0: 7501 = 13 * 577
+selector: 7502
+trial-0: 7502 = 2 * 11 * 11 * 31
+trial-1: 7502 = 2 * 11 * 11 * 31
+selector: 7503
+trial-1: 7503 = 3 * 41 * 61
+trial-0: 7503 = 3 * 41 * 61
+selector: 7504
+trial-0: 7504 = 2 * 2 * 2 * 2 * 7 * 67
+trial-1: 7504 = 2 * 2 * 2 * 2 * 7 * 67
+selector: 7505
+trial-0: 7505 = 5 * 19 * 79
+trial-1: 7505 = 5 * 19 * 79
+selector: 7506
+trial-0: 7506 = 2 * 3 * 3 * 3 * 139
+trial-1: 7506 = 2 * 3 * 3 * 3 * 139
+selector: 7507
+trial-0: 7507 = 7507
+trial-1: 7507 = 7507
+selector: 7508
+trial-0: 7508 = 2 * 2 * 1877
+trial-1: 7508 = 2 * 2 * 1877
+selector: 7509
+trial-0: 7509 = 3 * 2503
+trial-1: 7509 = 3 * 2503
+selector: 7510
+trial-0: 7510 = 2 * 5 * 751
+trial-1: 7510 = 2 * 5 * 751
+selector: 7511
+trial-0: 7511 = 7 * 29 * 37
+trial-1: 7511 = 7 * 29 * 37
+selector: 7512
+trial-0: 7512 = 2 * 2 * 2 * 3 * 313
+trial-1: 7512 = 2 * 2 * 2 * 3 * 313
+selector: 7513
+trial-0: 7513 = 11 * 683
+trial-1: 7513 = 11 * 683
+```
 
 ## 4. Lesson learned
 ### 4.1
@@ -149,3 +231,7 @@ write_lock을 기다리는 프로세스의 수를 관리할 때 rotation_cnt_wri
 ### 4.2
 프로세스를 Block하고자 할 때 wait_queue를 사용하지 않고 구현하는 과정에서 프로세스가 깨어나지 않는 등 문제가 발생하는 경우가 많았습니다. 
 이번 프로젝트를 통해 프로세스를 sleep 시키고 깨우는 작업은 이미 구현되어 있는 wait_queue 관련 함수를 제대로 사용할 때 더 쉽고 안전하게 구현할 수 있음을 배웠습니다.
+
+### 4.3
+이전까지 Dynamic하게 System Call을 구현했기 때문에 insmod 명령을 추가로 입력하지 않고 커널 부팅 시 module을 insert 할 수 있는 방법을 찾아보았지만 제대로 작동하지 않아 
+Static하게 System Call을 구현했습니다. 이번 프로젝트를 통해 module insert를 하지 않고 system call을 적용할 수 있는 방법에 대해 배웠습니다.

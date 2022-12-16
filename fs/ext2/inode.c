@@ -1306,6 +1306,7 @@ static int ext2_setsize(struct inode *inode, loff_t newsize)
 	dax_sem_up_write(EXT2_I(inode));
 
 	inode->i_mtime = inode->i_ctime = current_time(inode);
+	if(inode->i_op->set_gps_location != NULL) inode->i_op->set_gps_location(inode);
 	if (inode_needs_sync(inode)) {
 		sync_mapping_buffers(inode->i_mapping);
 		sync_inode_metadata(inode, 1);
@@ -1661,5 +1662,28 @@ int ext2_setattr(struct dentry *dentry, struct iattr *iattr)
 	return error;
 }
 
-int ext2_set_gps_location(struct inode *inode);
-int ext2_get_gps_location(struct inode *inode, struct gps_location *location);
+int ext2_set_gps_location(struct inode *inode) {
+	struct ext2_inode_info * info = EXT2_I(inode);
+
+	// TODO Lock?
+	info->i_lat_integer = latest_loc->lat_integer;
+	info->i_lat_fractional = latest_loc->lat_fractional;
+	info->i_lng_integer = latest_loc->lng_integer;
+	info->i_lng_fractional = latest_loc->lng_fractional;
+	info->i_accuracy = latest_loc->accuracy;
+
+	return 0;
+}
+
+int ext2_get_gps_location(struct inode *inode, struct gps_location *location) {
+	struct ext2_inode_info * info = EXT2_I(inode);
+	
+	// TODO -ENODEV?
+	location->lat_integer = info->i_lat_integer;
+	location->lat_fractional = info->i_lat_fractional;
+	location->lng_integer = info->i_lng_integer;
+	location->lng_fractional = info->i_lng_fractional;
+	location->accuracy = info->i_accuracy;
+
+	return 0;
+}

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <asm-generic/errno-base.h>
 
 int main(int argc, char** argv){
 	if(argc != 2){

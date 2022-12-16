@@ -3,9 +3,17 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <linux/gps.h>
+#include <asm-generic/errno-base.h>
 
 #define SET_GPS_LOCATION 398
+
+struct gps_location{
+	int lat_integer;
+	int lat_fractional;
+	int lng_integer;
+	int lng_fractional;
+	int accuracy;
+};
 
 int main(int argc, char *argv[]) {
     if(argc != 6) {

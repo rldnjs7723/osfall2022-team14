@@ -2,9 +2,17 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/syscall.h>
-#include <linux/gps.h>
+#include <asm-generic/errno-base.h>
 
 #define GET_GPS_LOCATION 399
+
+struct gps_location{
+	int lat_integer;
+	int lat_fractional;
+	int lng_integer;
+	int lng_fractional;
+	int accuracy;
+};
 
 int main(int argc, char *argv[]) {
 	struct gps_location loc;

@@ -9,7 +9,7 @@
 
 DEFINE_SPINLOCK(gps_lock);
 
-struct gps_location systemloc;
+struct gps_location * latest_loc;
 
 fblock PI = {3, 141592};
 fblock R = {6371000, 0};
@@ -150,11 +150,11 @@ SYSCALL_DEFINE1(set_gps_location, struct gps_location __user *, loc) {
 		return -EINVAL;
   }
 	spin_lock(&gps_lock);
-	systemloc.lat_integer = path_buf.lat_integer;
-	systemloc.lat_fractional = path_buf.lat_fractional;
-	systemloc.lng_integer = path_buf.lng_integer;
-	systemloc.lng_fractional = path_buf.lng_fractional;
-	systemloc.accuracy = path_buf.accuracy;
+	latest_loc->lat_integer = path_buf.lat_integer;
+	latest_loc->lat_fractional = path_buf.lat_fractional;
+	latest_loc->lng_integer = path_buf.lng_integer;
+	latest_loc->lng_fractional = path_buf.lng_fractional;
+	latest_loc->accuracy = path_buf.accuracy;
 	spin_unlock(&gps_lock);
 	return 0;
 }
@@ -176,7 +176,7 @@ SYSCALL_DEFINE2(get_gps_location, const char __user *, pathname, struct gps_loca
 	}
 	inode->i_op->get_gps_location(inode, &loc_buf);
 	spin_lock(&gps_lock);
-	if (!LocationCompare(&loc_buf, &systemloc)) {
+	if (!LocationCompare(&loc_buf, latest_loc)) {
 		spin_unlock(&gps_lock);
     printk("Can't access that location\n");
 		return -EACCES;

@@ -1664,13 +1664,14 @@ int ext2_setattr(struct dentry *dentry, struct iattr *iattr)
 
 int ext2_set_gps_location(struct inode *inode) {
 	struct ext2_inode_info * info = EXT2_I(inode);
-
-	// TODO Lock?
+	
+	spin_lock(&gps_lock);
 	info->i_lat_integer = latest_loc->lat_integer;
 	info->i_lat_fractional = latest_loc->lat_fractional;
 	info->i_lng_integer = latest_loc->lng_integer;
 	info->i_lng_fractional = latest_loc->lng_fractional;
 	info->i_accuracy = latest_loc->accuracy;
+	spin_unlock(&gps_lock);
 
 	return 0;
 }
@@ -1678,7 +1679,8 @@ int ext2_set_gps_location(struct inode *inode) {
 int ext2_get_gps_location(struct inode *inode, struct gps_location *location) {
 	struct ext2_inode_info * info = EXT2_I(inode);
 	
-	// TODO -ENODEV?
+	// This should fail with -ENODEV if no GPS coordinates are embedded in the file.
+	if (info->i_accuracy == 0) return -ENODEV;
 	location->lat_integer = info->i_lat_integer;
 	location->lat_fractional = info->i_lat_fractional;
 	location->lng_integer = info->i_lng_integer;

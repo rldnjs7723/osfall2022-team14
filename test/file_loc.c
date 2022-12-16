@@ -20,7 +20,10 @@ int main(int argc, char *argv[]) {
 		printf("Type \"./file_write [filename]\"\n");
 		return -1;
 	}
-	if (syscall(GET_GPS_LOCATION, argv[1], &loc)) {
+	char *tmp = malloc(32);
+	strcpy(tmp, "/root/proj4/");
+	strcat(tmp, argv[1]);
+	if (syscall(GET_GPS_LOCATION, tmp, &loc)) {
 		printf("ERROR");
 		return -1;
 	}

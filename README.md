@@ -26,16 +26,16 @@ mount -o loop -t ext2 /root/proj4.fs /root/proj4
 ./file_loc /root/proj4/[filename]
 ```
 
-## 2. Implement of Rotation-based reader/writer locks
+## 2. Implement of Geo-tagged File System
 ### 2.1 Static System Call
 이전 프로젝트와 같이 arch/arm64/include/asm/unistd.h에서 새로 구현한 System Call에 맞게 __NR_compat_syscalls의 값을 늘려주었습니다.
 ```
-#define __NR_compat_syscalls		400
+#define __NR_compat_syscalls    400
 ```
 arch/arm/tools/syscall.tbl에서 system call table을 직접 수정하였고,
 ```
-398 common  set_gps_location	sys_set_gps_location
-399 common	get_gps_location	sys_get_gps_location
+398 common  set_gps_location  sys_set_gps_location
+399 common  get_gps_location  sys_get_gps_location
 ```
 arch/arm64/include/asm/unistd32.h에서 system call number를 설정하고 include/linux/syscalls.h에서 연결한 함수를 지정했습니다.
 ```
@@ -52,12 +52,36 @@ System Call 함수는 SYSCALL_DEFINE을 통해 구현하였습니다.
 ```
 SYSCALL_DEFINE1(set_gps_location, struct gps_location __user *, loc)
 SYSCALL_DEFINE2(get_gps_location, const char __user *, pathname, struct gps_location __user *, loc)
+
+### 2.2 Define data structures for tracking device location
+gps.h 파일에 gps_location 구조체와 fblock 구조체를 정의했습니다. gps_location 구조체는 location의 위도, 경도의 정수/소수(6자리까지)의 정보와 허용 오차 범위를 담는 데에 사용하고, fblock 구조체는 kernel 내에서 floating 연산이 되지 않아 실수 연산을 정수 연산으로 바꾸어 계산해야 할 때 사용합니다.
+```
+struct gps_location {
+	int lat_integer;
+	int lat_fractional;
+	int lng_integer;
+	int lng_fractional;
+	int accuracy;
+};
+typedef struct _fblock {
+	long long int integer;
+	long long int fraction;
+} fblock;
 ```
 
-### 2.2 Define constants and implement data structures
+### 2.3 fblock function
 
 
 ## 3. gpsupdate and file_loc test
+### 3.1 gpsupdate.c
+gpsupdate는 유저로부터 latitude와 longitude, accuracy를 입력받고, latitude와 longitude가 올바른 값(-90 <= latitude <= 90, -180 <= longitude <= 180)인지 확인한 뒤, set_gps_location 시스템콜로 extern 변수인 latest_loc에 정보를 저장합니다.
 
+### 3.2 file_write.c
+file_write는 유저로부터 파일명을 입력받아서, /root/proj4 폴더 안에 그 파일명에 해당하는 파일이 있다면 열고, 없다면 생성한 뒤, Garbage 값을 작성합니다. 즉, 파일이 created되거나 modified되는 상황을 제공합니다.
+
+### 3.3 file_loc.c
+file_loc도 마찬가지로 유저로부터 파일명을 입력받아서, /root/proj4 폴더 안의 그 파일명에 해당하는 파일의 path를 get_gps_location의 인자로 전달하여 시스템콜합니다. 그렇게 얻은 위치 정보를 출력합니다.
+
+### 3.4 result
 
 ## 4. Lesson learned

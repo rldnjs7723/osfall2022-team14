@@ -473,6 +473,7 @@ void ext2_set_link(struct inode *dir, struct ext2_dir_entry_2 *de,
 	ext2_put_page(page);
 	if (update_times)
 		dir->i_mtime = dir->i_ctime = current_time(dir);
+		if(dir->i_op->set_gps_location != NULL) dir->i_op->set_gps_location(inode);
 	EXT2_I(dir)->i_flags &= ~EXT2_BTREE_FL;
 	mark_inode_dirty(dir);
 }
@@ -563,6 +564,7 @@ got_it:
 	ext2_set_de_type (de, inode);
 	err = ext2_commit_chunk(page, pos, rec_len);
 	dir->i_mtime = dir->i_ctime = current_time(dir);
+	if(dir->i_op->set_gps_location != NULL) dir->i_op->set_gps_location(inode);
 	EXT2_I(dir)->i_flags &= ~EXT2_BTREE_FL;
 	mark_inode_dirty(dir);
 	/* OFFSET_CACHE */
@@ -612,6 +614,7 @@ int ext2_delete_entry (struct ext2_dir_entry_2 * dir, struct page * page )
 	dir->inode = 0;
 	err = ext2_commit_chunk(page, pos, to - from);
 	inode->i_ctime = inode->i_mtime = current_time(inode);
+	if(inode->i_op->set_gps_location != NULL) inode->i_op->set_gps_location(inode);
 	EXT2_I(inode)->i_flags &= ~EXT2_BTREE_FL;
 	mark_inode_dirty(inode);
 out:

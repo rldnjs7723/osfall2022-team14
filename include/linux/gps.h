@@ -1,8 +1,6 @@
 #ifndef GPS_H_
 #define GPS_H_
 
-#include <linux/spinlock.h>
-
 struct gps_location {
 	int lat_integer;
 	int lat_fractional;
@@ -15,8 +13,6 @@ typedef struct _fblock {
   long long int fraction;
 } fblock;
 
-extern spinlock_t gps_lock;
-extern struct gps_location systemloc;
 fblock myadd(fblock num1, fblock num2);
 fblock mysub(fblock num1, fblock num2);
 fblock mymul(fblock num1, fblock num2);
@@ -29,7 +25,6 @@ long long int get_dist(struct gps_location* loc1, struct gps_location* loc2);
 int LocationCompare(struct gps_location *loc1, struct gps_location *loc2);
 long sys_set_gps_location(struct gps_location __user *loc);
 long sys_get_gps_location(const char __user *pathname, struct gps_location __user *loc);
-
 extern struct gps_location * latest_loc;
 
 #endif

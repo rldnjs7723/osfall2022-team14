@@ -21,11 +21,12 @@ cd ../e2fsprogs
 ./configure
 make
 cd ../
-#dd if=/dev/zero of=proj4.fs bs=1M count=1
-#sudo losetup /dev/loop14 proj4.fs
-#sudo ./e2fsprogs/misc/mke2fs -I 256 -L os.proj4 /dev/loop14
-#sudo losetup -d /dev/loop14
-#sudo mv proj4.fs ../tizen-image/mnt_dir/root/
+FREE=$(losetup -f)
+dd if=/dev/zero of=proj4.fs bs=1M count=1
+sudo losetup "$FREE" proj4.fs
+sudo ./e2fsprogs/misc/mke2fs -I 256 -L os.proj4 "$FREE"
+sudo losetup -d "$FREE"
+sudo mv proj4.fs ../tizen-image/mnt_dir/root/
 echo "-----------Wait Unmount-----------"
 sleep 5
 sudo umount ../tizen-image/mnt_dir

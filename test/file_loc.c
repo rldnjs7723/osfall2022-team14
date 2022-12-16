@@ -16,7 +16,7 @@ struct gps_location{
 
 int main(int argc, char *argv[]) {
 	struct gps_location loc;
-	if(argc != 2) {
+	if (argc != 2) {
 		printf("Type \"./file_write [filename]\"\n");
 		return -1;
 	}
@@ -24,7 +24,6 @@ int main(int argc, char *argv[]) {
 		printf("ERROR");
 		return -1;
 	}
-	printf("----------File info---------\n");
-	printf("GPS information: (latitude, longitude) / accuracy = (%d.%d, %d.%d) / %d\n", loc.lat_integer, loc.lat_fractional, loc.lng_integer, loc.lat_fractional, loc.accuracy);
+	printf("Location information: (latitude, longitude) / accuracy = (%d.%d, %d.%d) / %d\n", loc.lat_integer, loc.lat_fractional, loc.lng_integer, loc.lat_fractional, loc.accuracy);
 	return 0;
 }

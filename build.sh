@@ -27,6 +27,8 @@ sudo losetup "$FREE" proj4.fs
 sudo ./e2fsprogs/misc/mke2fs -I 256 -L os.proj4 "$FREE"
 sudo losetup -d "$FREE"
 sudo mv proj4.fs ../tizen-image/mnt_dir/root/
+echo "-----------Change fstab Permission-----------"
+sudo cp ./fstab ../tizen-image/mnt_dir/etc/
 echo "-----------Wait Unmount-----------"
 sleep 5
 sudo umount ../tizen-image/mnt_dir

@@ -1680,7 +1680,7 @@ int ext2_get_gps_location(struct inode *inode, struct gps_location *location) {
 	struct ext2_inode_info * info = EXT2_I(inode);
 	
 	// This should fail with -ENODEV if no GPS coordinates are embedded in the file.
-	if (inode->i_accuracy == 0) return -ENODEV;
+	if (info->i_accuracy == 0) return -ENODEV;
 	location->lat_integer = info->i_lat_integer;
 	location->lat_fractional = info->i_lat_fractional;
 	location->lng_integer = info->i_lng_integer;

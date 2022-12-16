@@ -1,7 +1,5 @@
-#ifndef __LINUX_GPS_H__
-#define __LINUX_GPS_H__
-
-#include <linux/spinlock.h>
+#ifndef GPS_H_
+#define GPS_H_
 
 struct gps_location {
 	int lat_integer;
@@ -11,7 +9,7 @@ struct gps_location {
 	int accuracy;
 };
 
-extern spinlock_t gps_lock;
-extern struct gps_location systemloc;
-extern int LocationCompare(struct gps_location *locA, struct gps_location *locB);
+long sys_set_gps_location(struct gps_location __user *loc);
+long sys_get_gps_location(const char __user *pathname, struct gps_location __user *loc);
+
 #endif

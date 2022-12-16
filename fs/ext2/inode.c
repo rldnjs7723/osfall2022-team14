@@ -39,6 +39,7 @@
 #include "ext2.h"
 #include "acl.h"
 #include "xattr.h"
+#include <linux/gps.h>
 
 static int __ext2_write_inode(struct inode *inode, int do_sync);
 
@@ -1659,3 +1660,6 @@ int ext2_setattr(struct dentry *dentry, struct iattr *iattr)
 
 	return error;
 }
+
+int ext2_set_gps_location(struct inode *inode);
+int ext2_get_gps_location(struct inode *inode, struct gps_location *location);

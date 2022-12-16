@@ -14,6 +14,7 @@ tar xvzf tizen-unified_20181024.1_iot-headless-2parts-armv7l-rpi3.tar.gz -C ../t
 echo "-----------Extract e2fsprogs-----------"
 rm -r -f ./e2fsprogs
 tar xvzf e2fsprogs-1.46.5.tar.gz -C ./
+sudo cp ./ext2_fs.h ./e2fsprogs/lib/ext2fs
 mv e2fsprogs-1.46.5 e2fsprogs
 echo "-----------Compile & Move Test File-----------"
 sudo mount ../tizen-image/rootfs.img ../tizen-image/mnt_dir

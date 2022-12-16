@@ -11,24 +11,12 @@ DEFINE_SPINLOCK(gps_lock);
 
 struct gps_location * latest_loc;
 
-typedef struct _fblock {
-  long long int integer;
-  long long int fraction;
-} fblock;
-
 fblock PI = {3, 141592};
 fblock R = {6371000, 0};
 fblock DtoR = {0, 17453};
 fblock RtoD = {57, 295779};
 
-fblock neg(fblock val) {
-  fblock result;
-  result.integer = -val.integer - 1;
-  result.fraction = 1000000LL -val.fraction;
-  return result;
-}
-
-fblock add(fblock num1, fblock num2) {
+fblock myadd(fblock num1, fblock num2) {
   fblock result;
   long long int temp = 1000000LL * (num1.integer + num2.integer) + num1.fraction + num2.fraction;
   if (temp >= 0) {
@@ -42,7 +30,7 @@ fblock add(fblock num1, fblock num2) {
   return result;
 }
 
-fblock sub(fblock num1, fblock num2) {
+fblock mysub(fblock num1, fblock num2) {
   fblock result;
   long long int temp = 1000000LL * (num1.integer - num2.integer) + num1.fraction - num2.fraction;
   if (temp >= 0) {
@@ -56,7 +44,7 @@ fblock sub(fblock num1, fblock num2) {
 	return result;
 }
 
-fblock mul(fblock num1, fblock num2) {
+fblock mymul(fblock num1, fblock num2) {
 	fblock result;
   long long temp = num1.integer * num2.fraction \
                  + num2.integer * num1.fraction \
@@ -72,9 +60,9 @@ fblock mul(fblock num1, fblock num2) {
   return result;
 }
 
-fblock div(fblock num, long long int div) {
+fblock mydiv(fblock num, long long int mydiv) {
 	fblock result;
-  long long int temp = (1000000LL * num.integer + num.fraction) / div;
+  long long int temp = (1000000LL * num.integer + num.fraction) / mydiv;
   if (temp >= 0) {
     result.integer = temp / 1000000LL;
     result.fraction = temp % 1000000LL;
@@ -86,47 +74,44 @@ fblock div(fblock num, long long int div) {
   return result;
 }
 
-fblock pow(fblock num, int exp) {
+fblock mypow(fblock num, int exp) {
 	if (exp == 0) return (fblock){1, 0};
-  else return mul(num, pow(num, exp - 1));
+  else return mymul(num, mypow(num, exp - 1));
 }
 
-long long int factorial(long long int num) {
+long long int myfactorial(long long int num) {
 	if (num == 0) return 1;
-  else return num * factorial(num - 1);
+  else return num * myfactorial(num - 1);
 }
 
-fblock cos(fblock deg) {
+fblock mycos(fblock deg) {
   fblock rad, temp, result = {1, 0};
-  rad = mul(deg, DtoR);
+  rad = mymul(deg, DtoR);
   int i;
   for(i = 1; i < 10; ++i) {
-    temp = div(pow(rad, 2 * i), factorial((long long int)(2 * i)));
-    if (i % 2) result = sub(result, temp);
-    else result = add(result, temp);
+    temp = mydiv(mypow(rad, 2 * i), myfactorial((long long int)(2 * i)));
+    if (i % 2) result = mysub(result, temp);
+    else result = myadd(result, temp);
   }
   return result;
 }
 
-fblock arccos(fblock deg) {
+fblock myarccos(fblock deg) {
   fblock rad, temp, result;
-  rad = div(PI, 2);
+  rad = mydiv(PI, 2);
   int i;
   for(i = 0; i < 10; ++i) {
-    temp = div(div(mul(pow(deg, 2 * i), (fblock){factorial((long long int)(2 * i)), 0}),
-                       factorial((long long int)(i)) * factorial((long long int)(i)) * (long long int)(2 * i + 1)),
-                   pow((fblock){4, 0}, i).integer);
-    rad = sub(rad, temp);
+    temp = mydiv(mydiv(mymul(mypow(deg, 2 * i), (fblock){myfactorial((long long int)(2 * i)), 0}),
+                       myfactorial((long long int)(i)) * myfactorial((long long int)(i)) * (long long int)(2 * i + 1)),
+                   mypow((fblock){4, 0}, i).integer);
+    rad = mysub(rad, temp);
   }
-  result = mul(rad, RtoD);
+  result = mymul(rad, RtoD);
   return result;
 }
 
 long long int get_dist(struct gps_location* loc1, struct gps_location* loc2) {
   fblock lat1, lng1, lat2, lng2, difflat, difflng, distance;
-  //fblock dlat, dlng;
-  //fblock latavg;
-  //fblock x, y, d;
 
   lat1.integer = (long long int)loc1->lat_integer;
   lat1.fraction = (long long int)loc1->lat_fractional;
@@ -137,29 +122,17 @@ long long int get_dist(struct gps_location* loc1, struct gps_location* loc2) {
   lng2.integer = (long long int)loc2->lng_integer;
   lng2.fraction = (long long int)loc2->lng_fractional;
 
-  difflat = sub(lat1, lat2);
-  difflng = sub(lng1, lng2);
+  difflat = mysub(lat1, lat2);
+  difflng = mysub(lng1, lng2);
 
-  /*dlat = (difflat.integer < 0) ? neg(difflat) : difflat;
-  dlng = (difflng.integer < 0) ? neg(difflng) : difflng;
-  latavg = avg(lat1, lat2);
-  y = mul(DIST, dlat);
-  x = mul(cos(latavg), mul(DIST, dlng));
-  d = add(mul(x, x), mul(y, y));
-  dist = d.integer;*/
-
-  distance = mul(R, arccos(sub(cos(difflat), mul(mul(cos(lat1), cos(lat2)), sub((fblock){1, 0}, cos(difflng))))));
+  distance = mymul(R, myarccos(mysub(mycos(difflat), mymul(mymul(mycos(lat1), mycos(lat2)), mysub((fblock){1, 0}, mycos(difflng))))));
 	return distance.fraction > 0 ? distance.integer + 1 : distance.integer; // round-up if fraction is not zero
 }
 
-int LocationCompare(struct gps_location *locA, struct gps_location *locB) {
+int LocationCompare(struct gps_location *loc1, struct gps_location *loc2) {
   long long int accuracy_sum, distance;
-  accuracy_sum = (long long int)locA->accuracy + (long long int)locB->accuracy;
-  //accuracy_square = accuracy_sum * accuracy_sum;
-  /*printk("locA : (%d.%d, %d.%d) / %d\nlocB : (%d.%d, %d.%d) / %d\n",
-  locA->lat_integer, locA->lat_fractional, locA->lng_integer, locA->lng_fractional, locA->accuracy,
-  locB->lat_integer, locB->lat_fractional, locB->lng_integer, locB->lng_fractional, locB->accuracy);*/
-  distance = get_dist(locA, locB);
+  accuracy_sum = (long long int)loc1->accuracy + (long long int)loc2->accuracy;
+  distance = get_dist(loc1, loc2);
 	return (distance <= accuracy_sum);
 }
 
@@ -187,32 +160,21 @@ SYSCALL_DEFINE1(set_gps_location, struct gps_location __user *, loc) {
 }
 
 SYSCALL_DEFINE2(get_gps_location, const char __user *, pathname, struct gps_location __user *, loc) {
-	//char *path_buf;
 	struct path path;
   unsigned int lookup_flags = LOOKUP_FOLLOW;
 	struct gps_location loc_buf;
 	struct inode *inode;
 
-  /*if (strncpy_from_user(path_buf, pathname, 64) < 0) {
-    printk("ERROR\n");
-    return -EFAULT;
-  }*/
 	if (user_path_at_empty(AT_FDCWD, pathname, lookup_flags, &path, NULL)) {
 		printk("ERROR\n");
 		return -EFAULT;	
 	}
-  /*
-  if (kern_path(path_buf, LOOKUP_FOLLOW, &path) < 0) {
-		printk("ERROR\n");
-		return -EFAULT;
-	}*/
   inode = path.dentry->d_inode;
 	if (!inode->i_op->get_gps_location) {
 		printk("ERROR\n");
 		return -ENODEV;
 	}
 	inode->i_op->get_gps_location(inode, &loc_buf);
-
 	spin_lock(&gps_lock);
 	if (!LocationCompare(&loc_buf, latest_loc)) {
 		spin_unlock(&gps_lock);
@@ -220,7 +182,6 @@ SYSCALL_DEFINE2(get_gps_location, const char __user *, pathname, struct gps_loca
 		return -EACCES;
 	}
 	spin_unlock(&gps_lock);
-
 	if (copy_to_user(loc, &loc_buf, sizeof(struct gps_location))) {
 		printk("ERROR\n");
 		return -EFAULT;

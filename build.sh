@@ -1,22 +1,33 @@
 #!/bin/bash
 
+echo "-----------Make Directory-----------"
+mkdir -p ../tizen-image/mnt_dir
+echo "-----------Build-----------"
 sudo ./build-rpi3-arm64.sh
-cd ../tizen-image
-sudo mount rootfs.img ../mnt_dir
-cd ../osfall2022-team14
-cd test
+echo "-----------Make Image File-----------"
+sudo ./scripts/mkbootimg_rpi3.sh
+echo "-----------Remove Prev Image File-----------"
+rm -f ../tizen-image/boot.img ../tizen-image/modules.img ../tizen-image/ramdisk.img ../tizen-image/ramdisk-recovery.img ../tizen-image/rootfs.img ../tizen-image/system-data.img
+echo "-----------Move Image File-----------"
+mv boot.img modules.img ../tizen-image
+tar xvzf tizen-unified_20181024.1_iot-headless-2parts-armv7l-rpi3.tar.gz -C ../tizen-image
+sudo mount ../tizen-image/rootfs.img ../tizen-image/mnt_dir
+echo "-----------Compile & Move Test File-----------"
+cd ./test
 make
-sudo cp gpsupdate ../../mnt_dir/root;
-sudo cp file_loc ../../mnt_dir/root;
-sudo cp file_write ../../mnt_dir/root;
+sudo cp gpsupdate file_loc file_write ../../tizen-image/mnt_dir/root
+echo "-----------Move proj4.fs-----------"
 cd ../e2fsprogs
 ./configure
 make
 cd ../
-dd if=/dev/zero of=proj4.fs bs=1M count=1
-sudo losetup /dev/loop14 proj4.fs
-sudo ./e2fsprogs/misc/mke2fs -I 256 -L os.proj4 /dev/loop14
-sudo losetup -d /dev/loop14
-sudo mv proj4.fs ../mnt_dir/root/
-sudo umount ../mnt_dir
+#dd if=/dev/zero of=proj4.fs bs=1M count=1
+#sudo losetup /dev/loop14 proj4.fs
+#sudo ./e2fsprogs/misc/mke2fs -I 256 -L os.proj4 /dev/loop14
+#sudo losetup -d /dev/loop14
+#sudo mv proj4.fs ../tizen-image/mnt_dir/root/
+echo "-----------Wait Unmount-----------"
+sleep 5
+sudo umount ../tizen-image/mnt_dir
+echo "-----------Done-----------"
 sudo ./qemu.sh

@@ -670,12 +670,6 @@ struct ext2_inode_info {
 	__u32	i_file_acl;
 	__u32	i_dir_acl;
 	__u32	i_dtime;
-	__u32	i_lat_integer;
-	__u32	i_lat_fractional;
-	__u32	i_lng_integer;
-	__u32	i_lng_fractional;
-	__u32	i_accuracy;
-
 	/*
 	 * i_block_group is the number of the block group which contains
 	 * this file's inode.  Constant across the lifetime of the inode,
@@ -716,6 +710,11 @@ struct ext2_inode_info {
 #ifdef CONFIG_QUOTA
 	struct dquot *i_dquot[MAXQUOTAS];
 #endif
+	__u32	i_lat_integer;
+	__u32	i_lat_fractional;
+	__u32	i_lng_integer;
+	__u32	i_lng_fractional;
+	__u32	i_accuracy;
 };
 
 #ifdef CONFIG_FS_DAX

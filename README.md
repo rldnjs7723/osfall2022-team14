@@ -84,6 +84,23 @@ __u32	i_lng_integer;
 __u32	i_lng_fractional;
 __u32	i_accuracy;
 ```
+또한 메모리와 디스크에서 각각 사용하는 두 ext2 inode 구조체를 변환하기 위해 fs/ext2/inode.c의  
+__ext2_write_inode에서는 다음 코드를 추가하고,
+```
+raw_inode->i_lat_integer = cpu_to_le32(ei->i_lat_integer);
+raw_inode->i_lat_fractional = cpu_to_le32(ei->i_lat_fractional);
+raw_inode->i_lng_integer = cpu_to_le32(ei->i_lng_integer);
+raw_inode->i_lng_fractional = cpu_to_le32(ei->i_lng_fractional);
+raw_inode->i_accuracy = cpu_to_le32(ei->i_accuracy);
+```
+ext2_iget에서는 다음 코드를 추가했습니다.
+```
+ei->i_lat_integer = le32_to_cpu(raw_inode->i_lat_integer);
+ei->i_lat_fractional = le32_to_cpu(raw_inode->i_lat_fractional);
+ei->i_lng_integer = le32_to_cpu(raw_inode->i_lng_integer);
+ei->i_lng_fractional = le32_to_cpu(raw_inode->i_lng_fractional);
+ei->i_accuracy = le32_to_cpu(raw_inode->i_accuracy);
+```
 
 ### 2.3 Inode GPS-related operation & Update location information
 추가한 inode operation은, inode에 위치 정보를 설정하는 ext2_set_gps_location과 
@@ -146,15 +163,18 @@ gpsupdate는 유저로부터 latitude와 longitude, accuracy를 입력받고, la
 file_write는 유저로부터 파일명을 입력받아서, /root/proj4 폴더 안에 그 파일명에 해당하는 파일이 있다면 열고, 없다면 생성한 뒤, Garbage 값을 작성합니다. 즉, 파일이 created되거나 modified되는 상황을 제공합니다.
 
 ### 3.3 file_loc.c
-file_loc도 마찬가지로 유저로부터 파일명을 입력받아서, /root/proj4 폴더 안의 그 파일명에 해당하는 파일의 path를 get_gps_location의 인자로 전달하여 시스템콜합니다. 그렇게 얻은 위치 정보를 출력합니다.
+file_loc도 마찬가지로 유저로부터 파일명을 입력받아서, /root/proj4 폴더 안의 그 파일명에 해당하는 파일의 path를 get_gps_location의 인자로 전달하여 시스템콜합니다. 그렇게 얻은 위치 정보를 출력하고, 구글 맵 링크 형태로도 출력합니다.
 
 ### 3.4 result
 
 ## 4. Lesson learned
 ### 4.1
-헤더 파일에 extern 키워드로 구조체 포인터를 할당한 후, Segmentation Fault가 발생하여 문제 원인을 찾느라 여러 작성한 코드를 되돌리면서 많은 시간을 소모했습니다. 이러한 경험으로 
-한 번에 여러 수정사항을 반영한 후 동작 여부를 확인하지 않고, 빌드에 많은 시간이 소모되더라도 하나씩 확실하게 구현해나가야 한다는 점을 배웠습니다.
-
-### 4.2
 ext2_create에 주석으로 적혀진 내용을 읽었을 때, ext2_create가 호출되는 시점이 새로운 파일의 Directory Cache Entry가 생성된 이후이므로 inode가 더 늦게 할당된다는 점을 알았고, 
 inode의 정보를 갱신하는 작업을 Operation을 추가로 생성하여 진행하면서 파일 시스템의 구성 방식에 대해 좀 더 이해할 수 있었습니다.
+
+### 4.2
+proj4.fs를 umount한 후 다시 mount 할 때 위치 정보가 손실되는 현상을 보고, 디스크와 메모리에서 각자 사용하는 구조체의 종류가 다르다는 것을 알았고, 변환을 위한 추가적인 작업이 필요함을 알게 되었습니다.
+
+### 4.3
+헤더 파일에 extern 키워드로 구조체 포인터를 할당한 후, Segmentation Fault가 발생하여 문제 원인을 찾느라 여러 작성한 코드를 되돌리면서 많은 시간을 소모했습니다. 이러한 경험으로 
+한 번에 여러 수정사항을 반영한 후 동작 여부를 확인하지 않고, 빌드에 많은 시간이 소모되더라도 하나씩 확실하게 구현해나가야 한다는 점을 배웠습니다.

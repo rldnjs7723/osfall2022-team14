@@ -11,6 +11,7 @@ cd ./e2fsprogs
 ./configure
 make
 cd ../
+rm -f proj4.fs
 FREE=$(losetup -f)
 dd if=/dev/zero of=proj4.fs bs=1M count=1
 sudo losetup "$FREE" proj4.fs

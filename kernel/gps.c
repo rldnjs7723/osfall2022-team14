@@ -9,7 +9,7 @@
 
 DEFINE_SPINLOCK(gps_lock);
 
-struct gps_location * latest_loc;
+struct gps_location latest_loc;
 
 fblock PI = {3, 141592};
 fblock R = {6371000, 0};
@@ -125,36 +125,43 @@ long long int get_dist(struct gps_location* loc1, struct gps_location* loc2) {
   difflat = mysub(lat1, lat2);
   difflng = mysub(lng1, lng2);
 
-  distance = mymul(R, myarccos(mysub(mycos(difflat), mymul(mymul(mycos(lat1), mycos(lat2)), mysub((fblock){1, 0}, mycos(difflng))))));
-	return distance.fraction > 0 ? distance.integer + 1 : distance.integer; // round-up if fraction is not zero
+  distance = mysub(mycos(difflat), mymul(mymul(mycos(lat1), mycos(lat2)), mysub((fblock){1, 0}, mycos(difflng))));
+	return distance.integer;
 }
 
-int LocationCompare(struct gps_location *loc1, struct gps_location *loc2) {
-  long long int accuracy_sum, distance;
-  accuracy_sum = (long long int)loc1->accuracy + (long long int)loc2->accuracy;
+int check_dist(struct gps_location *loc1, struct gps_location *loc2) {
+  long long int distance;
+  fblock accuracy_sum = {(long long int)loc1->accuracy + (long long int)loc2->accuracy, 0};
+  accuracy_sum = mycos(mydiv(accuracy_sum, 6371000LL));
   distance = get_dist(loc1, loc2);
-	return (distance <= accuracy_sum);
+  printk("loc1: (%d.%d, %d.%d)/%d\n", loc1->lat_integer, loc1->lat_fractional, loc1->lng_integer, loc1->lng_fractional, loc1->accuracy);
+  printk("loc2: (%d.%d, %d.%d)/%d\n", loc2->lat_integer, loc2->lat_fractional, loc2->lng_integer, loc2->lng_fractional, loc2->accuracy);
+  //printk("Distance: %lld\n", distance);
+  //printk("Accuracy Sum: %lld\n", accuracy_sum.integer);
+	return (distance >= accuracy_sum.integer);
 }
 
 SYSCALL_DEFINE1(set_gps_location, struct gps_location __user *, loc) {
   struct gps_location path_buf;
 	if (copy_from_user(&path_buf, loc, sizeof(struct gps_location))) {
-		printk("ERROR\n");
+		printk("Can't copy location information from user\n");
 		return -EFAULT;
 	}
 	if (path_buf.lat_integer < -90 || path_buf.lat_integer > 90
   || path_buf.lng_integer < -180 || path_buf.lng_integer > 180
   || path_buf.lat_fractional < 0 || path_buf.lat_fractional > 999999
-  || path_buf.lng_fractional < 0 || path_buf.lng_fractional > 999999) {
+  || path_buf.lng_fractional < 0 || path_buf.lng_fractional > 999999
+  || (path_buf.lat_integer == 90 && path_buf.lat_fractional > 0)
+  || (path_buf.lng_integer == 180 && path_buf.lng_fractional > 0)) {
     printk("Invalid location\n");
 		return -EINVAL;
   }
 	spin_lock(&gps_lock);
-	latest_loc->lat_integer = path_buf.lat_integer;
-	latest_loc->lat_fractional = path_buf.lat_fractional;
-	latest_loc->lng_integer = path_buf.lng_integer;
-	latest_loc->lng_fractional = path_buf.lng_fractional;
-	latest_loc->accuracy = path_buf.accuracy;
+	latest_loc.lat_integer = path_buf.lat_integer;
+	latest_loc.lat_fractional = path_buf.lat_fractional;
+	latest_loc.lng_integer = path_buf.lng_integer;
+	latest_loc.lng_fractional = path_buf.lng_fractional;
+	latest_loc.accuracy = path_buf.accuracy;
 	spin_unlock(&gps_lock);
 	return 0;
 }
@@ -166,24 +173,24 @@ SYSCALL_DEFINE2(get_gps_location, const char __user *, pathname, struct gps_loca
 	struct inode *inode;
 
 	if (user_path_at_empty(AT_FDCWD, pathname, lookup_flags, &path, NULL)) {
-		printk("ERROR\n");
+		printk("Not existing path\n");
 		return -EFAULT;	
 	}
   inode = path.dentry->d_inode;
 	if (!inode->i_op->get_gps_location) {
-		printk("ERROR\n");
+		printk("Invalid path\n");
 		return -ENODEV;
 	}
 	inode->i_op->get_gps_location(inode, &loc_buf);
 	spin_lock(&gps_lock);
-	if (!LocationCompare(&loc_buf, latest_loc)) {
+	if (!check_dist(&loc_buf, &latest_loc)) {
 		spin_unlock(&gps_lock);
     printk("Can't access that location\n");
 		return -EACCES;
 	}
 	spin_unlock(&gps_lock);
 	if (copy_to_user(loc, &loc_buf, sizeof(struct gps_location))) {
-		printk("ERROR\n");
+		printk("Can't copy location information to user\n");
 		return -EFAULT;
 	}
 	return 0;

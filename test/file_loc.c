@@ -28,6 +28,6 @@ int main(int argc, char *argv[]) {
 		printf("ERROR\n");
 		return -1;
 	}
-	printf("Location information: (latitude, longitude) / accuracy = (%d.%d, %d.%d) / %d\n", loc.lat_integer, loc.lat_fractional, loc.lng_integer, loc.lat_fractional, loc.accuracy);
+	printf("Location information: (latitude, longitude) / accuracy = (%d.%d, %d.%d) / %d\n", loc.lat_integer, loc.lat_fractional, loc.lng_integer, loc.lng_fractional, loc.accuracy);
 	return 0;
 }

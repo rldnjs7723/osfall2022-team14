@@ -134,8 +134,8 @@ int check_dist(struct gps_location *loc1, struct gps_location *loc2) {
   fblock accuracy_sum = {(long long int)loc1->accuracy + (long long int)loc2->accuracy, 0};
   accuracy_sum = mycos(mydiv(accuracy_sum, 6371000LL));
   distance = get_dist(loc1, loc2);
-  printk("loc1: (%d.%d, %d.%d)/%d\n", loc1->lat_integer, loc1->lat_fractional, loc1->lng_integer, loc1->lng_fractional, loc1->accuracy);
-  printk("loc2: (%d.%d, %d.%d)/%d\n", loc2->lat_integer, loc2->lat_fractional, loc2->lng_integer, loc2->lng_fractional, loc2->accuracy);
+  //printk("loc1: (%d.%d, %d.%d)/%d\n", loc1->lat_integer, loc1->lat_fractional, loc1->lng_integer, loc1->lng_fractional, loc1->accuracy);
+  //printk("loc2: (%d.%d, %d.%d)/%d\n", loc2->lat_integer, loc2->lat_fractional, loc2->lng_integer, loc2->lng_fractional, loc2->accuracy);
   //printk("Distance: %lld\n", distance);
   //printk("Accuracy Sum: %lld\n", accuracy_sum.integer);
 	return (distance >= accuracy_sum.integer);
@@ -183,11 +183,7 @@ SYSCALL_DEFINE2(get_gps_location, const char __user *, pathname, struct gps_loca
 	}
 	inode->i_op->get_gps_location(inode, &loc_buf);
 	spin_lock(&gps_lock);
-<<<<<<< HEAD
 	if (!check_dist(&loc_buf, &latest_loc)) {
-=======
-	if (!LocationCompare(&loc_buf, &latest_loc)) {
->>>>>>> 94b4f7c138b8ef0df0c164df19688240e029ebf1
 		spin_unlock(&gps_lock);
     printk("Can't access that location\n");
 		return -EACCES;

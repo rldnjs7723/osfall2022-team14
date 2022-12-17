@@ -28,6 +28,6 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 	printf("Location information: (latitude, longitude) / accuracy = (%d.%d, %d.%d) / %d\n", loc.lat_integer, loc.lat_fractional, loc.lng_integer, loc.lng_fractional, loc.accuracy);
-	printf("Google Maps link: https://www.google.com/maps/place/%d.%d,%d.%d,%d", loc.lat_integer, loc.lat_fractional, loc.lng_integer, loc.lng_fractional, loc.accuracy);
+	printf("Google Maps link: https://www.google.com/maps/place/@%d.%d,%d.%d,%dz/", loc.lat_integer, loc.lat_fractional, loc.lng_integer, loc.lng_fractional, loc.accuracy);
 	return 0;
 }

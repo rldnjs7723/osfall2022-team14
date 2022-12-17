@@ -180,7 +180,7 @@ Location information: (latitude, longitude) / accuracy = (37.448743, 126.950364)
 Google Maps link: https://www.google.com/maps/place/@37.448743,126.950364,17z/
 root:~> ./gpsupdate -37 448743 -126 950364 17
 root:~> ./file_loc test1
-[   94.961063] Can't access that location
+[   93.870528] Can't access that location
 root:~> ./file_write test2
 root:~> ./file_loc test2
 Location information: (latitude, longitude) / accuracy = (-37.448743, -126.950364) / 17
@@ -194,7 +194,7 @@ root:~> ./file_loc test1
 Location information: (latitude, longitude) / accuracy = (37.458743, 126.960364) / 17
 Google Maps link: https://www.google.com/maps/place/@37.458743,126.960364,17z/
 root:~> ./gpsupdate 37 458743 186 960364 17
-[   95.799730] Invalid location
+[   94.264703] Invalid location
 ERROR
 root:~> ls -l proj4
 total 17
@@ -204,13 +204,17 @@ drwxr-xr-x 2 root root  1024 Jan  1  1970 SeoulNat
 drwx------ 2 root root 12288 Dec 17  2022 lost+found
 -rw-r--r-- 1 root root     5 Jan  1 00:01 test1
 -rw-r--r-- 1 root root     5 Jan  1 00:01 test2
+root:~> ./gpsupdate 37 579617 126 977041 100
 root:~> ./file_loc Gyeongbokgung
-
-[   96.751637] Can't access that location
+Location information: (latitude, longitude) / accuracy = (37.579617, 126.977041) / 100
+Google Maps link: https://www.google.com/maps/place/@37.579617,126.977041,100z/
+root:~> ./gpsupdate 37 242936 131 866842 1000
 root:~> ./file_loc Dokdo
-[   96.894619] Can't access that location
+Location information: (latitude, longitude) / accuracy = (37.242936, 131.866842) / 1000
+Google Maps link: https://www.google.com/maps/place/@37.242936,131.866842,1000z/
+root:~> ./gpsupdate 37 456509 126 950038 500
 root:~> ./file_loc SeoulNat
-[   96.985131] Invalid path
+[   96.681153] Invalid path
 ```
 
 ## 4. Lesson learned

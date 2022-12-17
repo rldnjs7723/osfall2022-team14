@@ -1,7 +1,9 @@
 ### OSFALL2022 TEAM14 PROJ4
 
 ## 0. Overview
-
+이번 프로젝트에서는 위치 정보를 inode에 함께 저장하는 파일 시스템을 구현했습니다. 
+위치 정보는 위도, 경도로 나타내며 부동 소수점을 사용할 수 없기 때문에 정수부와 소수부를 나누어 정수 값으로 저장한 뒤 연산에 사용했습니다. 
+코드를 테스트 할 때는 ext2 파일 시스템을 구현한 코드에 맞게 inode 정보를 추가한 뒤 mount 하여 위치 정보와 함께 write를 수행하도록 했습니다.
 
 ## 1. How to Build Kernel
 git clone을 통해 kernel 파일을 모두 다운 받으면 해당 위치에 osfall2022-team14 라는 폴더가 생성됩니다.
@@ -13,7 +15,8 @@ git clone -b proj4 https://github.com/rldnjs7723/osfall2022-team14.git
 cd osfall2022-team14
 ```
 kernel 폴더 내부에 위치한 build.sh를 실행하면 커널 파일 빌드를 수행하고, rootfs로 테스트 파일을 이동한 뒤, tizen kernel을 실행합니다.  
-또한, fstab에서 read-only 옵션을 제거하여 별도의 mount 옵션을 입력하지 않아도 됩니다.
+도중에 e2fsprogs 파일을 압축 해제하고, prog4 생성 및 이동까지 수행하기 때문에 별도의 명령어가 필요하지 않으며,  
+fstab에서 read-only 옵션을 제거하여 권한 설정을 위해 별도의 remount 옵션을 입력하지 않아도 됩니다.
 ```
 sudo ./build.sh
 ```

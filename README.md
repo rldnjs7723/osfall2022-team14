@@ -121,7 +121,7 @@ if(inode->i_op->set_gps_location != NULL) inode->i_op->set_gps_location(inode);
 ```
 
 ### 2.4 fblock function
-fblock 구조체 간의 연산을 수행하기 위한 함수들을 정의했습니다. 코사인 함수와 코사인 역함수는 테일러 급수를 이용하여 정의했습니다.
+fblock 구조체 간의 연산을 수행하기 위한 함수들을 정의했습니다. 코사인 함수~~와 코사인 역함수~~는 테일러 급수를 이용하여 정의했습니다.
 ```
 fblock myadd(fblock num1, fblock num2);
 fblock mysub(fblock num1, fblock num2);
@@ -130,13 +130,15 @@ fblock mydiv(fblock num, long long int div);
 fblock mypow(fblock num, int exp);
 long long int myfactorial(long long int num);
 fblock mycos(fblock deg);
-fblock myarccos(fblock deg);
 ```
+~~fblock myarccos(fblock deg);~~
 
 ### 2.5 calculate distance and check if able to access
 get_dist 함수를 이용하여, 저장된 위치 정보와 최근 위치 정보가 나타내는 위치 간의 거리를 구하고, LocationCompare 함수를 이용하여 두 위치 정보가 갖는 accuracy의 합보다 거리가 더 가까운지를 판단하였습니다. 거리가 더 가깝다면 get_gps_location 시스템 콜 시에 받아들이고, 거리가 더 멀면 받아들이지 않습니다. get_dist 함수에서 거리를 구할 때에는, 지구가 구(sphere)라는 점에 착안하여 다음과 같은 haversine 공식을 이용해, 위도와 경도만으로 거리를 구했습니다.
 
 <img src="https://user-images.githubusercontent.com/104059642/208203945-41e90d66-926c-4d4a-ba08-7889422308e7.png"  width="1000" height="300">
+
+그런데, 테일러 급수를 통한 arccos을 사용할 경우, 수렴 속도가 너무 느려 arccos(1) 계산 시 오차가 너무 컸습니다. 그래서 distance와 accuracy_sum을 R(지구 반지름)로 나누고 cos을 씌워 그 값을 비교했습니다. 이때, 코사인 함수는 감소함수라는 점에 착안하여, 결과적으로 cos(distance / R) >= cos(accuracy / R) 시에만 받아들이도록 하였습니다.
 
 ## 3. gpsupdate and file_loc test
 ### 3.1 gpsupdate.c

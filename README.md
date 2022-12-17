@@ -15,8 +15,7 @@ git clone -b proj4 https://github.com/rldnjs7723/osfall2022-team14.git
 cd osfall2022-team14
 ```
 kernel 폴더 내부에 위치한 build.sh를 실행하면 커널 파일 빌드를 수행하고, rootfs로 테스트 파일을 이동한 뒤, tizen kernel을 실행합니다.  
-도중에 e2fsprogs 파일을 압축 해제하고, prog4 생성 및 이동까지 수행하기 때문에 별도의 명령어가 필요하지 않으며,  
-fstab에서 read-only 옵션을 제거하여 권한 설정을 위해 별도의 remount 옵션을 입력하지 않아도 됩니다.
+또한, fstab에서 read-only 옵션을 제거하여 권한 설정을 위해 별도의 remount 옵션을 입력하지 않아도 됩니다.
 ```
 sudo ./build.sh
 ```
@@ -56,6 +55,9 @@ System Call 함수는 SYSCALL_DEFINE을 통해 구현하였습니다.
 SYSCALL_DEFINE1(set_gps_location, struct gps_location __user *, loc)
 SYSCALL_DEFINE2(get_gps_location, const char __user *, pathname, struct gps_location __user *, loc)
 ```
+set_gps_location의 경우 위도는 -90~90 범위의 값, 경도는 -180~180 범위의 값을 가지고 소수부는 0과 999999 범위의 값을 가지도록 하고, 범위를 벗어난 경우 -EINVAL을 리턴하였습니다.  
+get_gps_location의 경우 inode에 정의한 operation을 통해 위치 정보를 얻고, 위치 정보가 없으면 -ENODEV를, 
+저장된 위치 정보와 최근 위치 정보 사이의 거리를 계산하여 accuracy의 합보다 멀다면 -EACCES를 리턴하도록 했습니다. 
 
 ### 2.2 Define data structures for tracking device location
 gps.h 파일에 gps_location 구조체와 fblock 구조체를 정의했습니다. gps_location 구조체는 location의 위도, 경도의 정수/소수(6자리까지)의 정보와 허용 오차 범위를 담는 데에 사용하고, fblock 구조체는 kernel 내에서 floating 연산이 되지 않아 실수 연산을 정수 연산으로 바꾸어 계산해야 할 때 사용합니다.
@@ -72,8 +74,45 @@ typedef struct _fblock {
 	long long int fraction;
 } fblock;
 ```
+inode에서 저장할 위치 정보는 fs/ext2/ext2.h의 ext2_inode와 ext2_inode_info에 추가하였으며, 
+테스트에 사용할 ext2 파일 시스템에도 적용하기 위해 e2fsprogs/lib/ext2fs/ext2_fs.h의 ext2_inode와 ext2_inode_large에 위치 정보를 추가했습니다.
+```
+__u32	i_lat_integer;
+__u32	i_lat_fractional;
+__u32	i_lng_integer;
+__u32	i_lng_fractional;
+__u32	i_accuracy;
+```
 
-### 2.3 fblock function
+### 2.3 Inode GPS-related operation & Update location information
+추가한 inode operation은, inode에 위치 정보를 설정하는 ext2_set_gps_location과 
+inode에 저장된 위치 정보를 gps_location 구조체에 저장하는 ext2_get_gps_location입니다.
+fs/ext2/ext2.h에는 다른 파일에서 참조할 수 있도록 extern 키워드를 통해 정의해두었고,
+```
+extern int ext2_set_gps_location(struct inode *inode);
+extern int ext2_get_gps_location(struct inode *inode, struct gps_location *location);
+```
+fs/ext2/file.c에서 ext2_file_inode_operations에 두 operation을 추가하여 inode->i_op를 통해 접근할 수 있도록 설정했습니다.
+```
+.set_gps_location = ext2_set_gps_location,
+.get_gps_location = ext2_get_gps_location,
+```
+set_gps_location의 경우 가장 최근의 위치 정보를 통해 inode의 위치 정보를 설정하므로  
+include/linux/gps.h에 최근 위치 정보를 저장할 구조체를 설정했고, sys_set_gps_location이 호출되면 latest_loc에 위치 정보를 저장한 후 
+ext2_set_gps_location에서 해당 inode의 ext2_inode_info 구조체를 EXT2_I로 불러와서 latest_loc에 저장된 위치 정보를 통해 값을 설정합니다.  
+ext2_get_gps_location에서는 ext2_inode_info에서 정보를 빼내고, 인자로 받은 gps_location 구조체에 위치 정보를 저장하면 
+sys_get_gps_location에서 gps_location에 저장된 위치 정보를 처리하게 됩니다.
+```
+extern struct gps_location latest_loc;
+```
+또한, latest_loc의 경우 공유되는 구조체이기 때문에 중간에 값이 변하지 않도록 sys_set_gps_location이나 ext2_set_gps_location에서 
+spin_lock을 잡은 후 latest_loc에서 값을 읽거나 쓰도록 하였습니다. 
+따라서 서로 같은 lock을 공유하기 위해 spinlock_t를 include/linux/gps.h에 설정하였습니다.
+```
+extern spinlock_t gps_lock;
+```
+
+### 2.4 fblock function
 fblock 구조체 간의 연산을 수행하기 위한 함수들을 정의했습니다. 코사인 함수와 코사인 역함수는 테일러 급수를 이용하여 정의했습니다.
 ```
 fblock myadd(fblock num1, fblock num2);
@@ -86,7 +125,7 @@ fblock mycos(fblock deg);
 fblock myarccos(fblock deg);
 ```
 
-### 2.4 calculate distance and check if able to access
+### 2.5 calculate distance and check if able to access
 get_dist 함수를 이용하여, 저장된 위치 정보와 최근 위치 정보가 나타내는 위치 간의 거리를 구하고, LocationCompare 함수를 이용하여 두 위치 정보가 갖는 accuracy의 합보다 거리가 더 가까운지를 판단하였습니다. 거리가 더 가깝다면 get_gps_location 시스템 콜 시에 받아들이고, 거리가 더 멀면 받아들이지 않습니다. get_dist 함수에서 거리를 구할 때에는, 지구가 구(sphere)라는 점에 착안하여 다음과 같은 haversine 공식을 이용해, 위도와 경도만으로 거리를 구했습니다.
 
 <img src="https://user-images.githubusercontent.com/104059642/208203945-41e90d66-926c-4d4a-ba08-7889422308e7.png"  width="1000" height="300">

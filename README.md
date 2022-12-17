@@ -15,6 +15,7 @@ git clone -b proj4 https://github.com/rldnjs7723/osfall2022-team14.git
 cd osfall2022-team14
 ```
 kernel 폴더 내부에 위치한 build.sh를 실행하면 커널 파일 빌드를 수행하고, rootfs로 테스트 파일을 이동한 뒤, tizen kernel을 실행합니다.  
+이 경우, osfall2022-team14 폴더 내에 위치한 proj4.fs 파일을 root에 위치하도록 복사합니다.  
 또한, fstab에서 read-only 옵션을 제거하여 권한 설정을 위해 별도의 remount 옵션을 입력하지 않아도 됩니다.
 ```
 sudo ./build.sh

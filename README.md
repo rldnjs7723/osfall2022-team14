@@ -55,7 +55,7 @@ System Call 함수는 SYSCALL_DEFINE을 통해 구현하였습니다.
 SYSCALL_DEFINE1(set_gps_location, struct gps_location __user *, loc)
 SYSCALL_DEFINE2(get_gps_location, const char __user *, pathname, struct gps_location __user *, loc)
 ```
-set_gps_location의 경우 위도는 -90~90 범위의 값, 경도는 -180~180 범위의 값을 가지고 소수부는 0과 999999 범위의 값을 가지도록 하고, 범위를 벗어난 경우 -EINVAL을 리턴하였습니다.  
+set_gps_location의 경우 위도는 -90에서 90 범위의 값, 경도는 -180에서 180 범위의 값을 가지고 소수부는 0과 999999 범위의 값을 가지도록 하고, 범위를 벗어난 경우 -EINVAL을 리턴하였습니다.  
 get_gps_location의 경우 inode에 정의한 operation을 통해 위치 정보를 얻고, 위치 정보가 없으면 -ENODEV를, 
 저장된 위치 정보와 최근 위치 정보 사이의 거리를 계산하여 accuracy의 합보다 멀다면 -EACCES를 리턴하도록 했습니다. 
 
@@ -110,6 +110,13 @@ spin_lock을 잡은 후 latest_loc에서 값을 읽거나 쓰도록 하였습니
 따라서 서로 같은 lock을 공유하기 위해 spinlock_t를 include/linux/gps.h에 설정하였습니다.
 ```
 extern spinlock_t gps_lock;
+```
+
+위치 정보는 파일이 create 되거나 modify 된 경우에 업데이트 하도록 설정하였고, 
+create는 fs/ext2/namei.c의 ext2_create에서 set_gps_location operation을 호출하도록 하였습니다.
+modify는 fs/ext2에 위치한 소스 코드 중에서 i_mtime을 current_time()으로 갱신하는 경우에 전부 set_gps_location operation을 호출하도록 설정했습니다.
+```
+if(inode->i_op->set_gps_location != NULL) inode->i_op->set_gps_location(inode);
 ```
 
 ### 2.4 fblock function

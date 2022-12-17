@@ -114,7 +114,7 @@ extern spinlock_t gps_lock;
 
 위치 정보는 파일이 create 되거나 modify 된 경우에 업데이트 하도록 설정하였고, 
 create는 fs/ext2/namei.c의 ext2_create에서 set_gps_location operation을 호출하도록 하였습니다.
-modify는 fs/ext2에 위치한 소스 코드 중에서 i_mtime을 current_time()으로 갱신하는 경우에 전부 set_gps_location operation을 호출하도록 설정했습니다.
+modify는 fs/ext2에 위치한 소스 코드 중에서 i_mtime을 current_time()으로 갱신하는 경우에 전부 set_gps_location operation을 호출하도록 설정했습니다. (dir.c / ialloc.c / inode.c / super.c)
 ```
 if(inode->i_op->set_gps_location != NULL) inode->i_op->set_gps_location(inode);
 ```

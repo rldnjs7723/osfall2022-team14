@@ -168,6 +168,50 @@ file_write는 유저로부터 파일명을 입력받아서, /root/proj4 폴더 �
 file_loc도 마찬가지로 유저로부터 파일명을 입력받아서, /root/proj4 폴더 안의 그 파일명에 해당하는 파일의 path를 get_gps_location의 인자로 전달하여 시스템콜합니다. 그렇게 얻은 위치 정보를 출력하고, 구글 맵 링크 형태로도 출력합니다.
 
 ### 3.4 result
+proj4 디렉토리를 생성한 뒤, 그곳에 proj4.fs를 마운트합니다.(proj4.fs에는 이미 Gyeongbokgung, Dokdo 파일과 SeoulNat 폴더가 존재합니다.) 먼저 gpsupdate를 하고 test1을 생성합니다. 그러면 file_loc을 통해 현재 위치에서는 test1에 접근 가능한 것을 확인할 수 있습니다. 위치를 다시 바꾸면 test1에 접근 불가능해집니다. 이 위치 정보를 test2에 저장하고 처음 test1의 위치와 비슷한 위치로 gpsupdate하면 다시 test1에 접근 가능해집니다. 여기에서 test1 파일을 수정하면, 저장되었던 위치 정보가 현재의 것으로 바뀝니다. 위도나 경도의 범위가 제한을 벗어나면 Invalid location을 출력합니다. 이미 존재했던 파일인 Gyeongbokgung, Dokdo는 해당 위치로 각각 이동하면 접근 가능하지만, 폴더의 경우에는 아예 유효한 파일 위치로 인식하지 못합니다.
+
+```
+root:~> mkdir proj4
+root:~> mount -o loop -t ext2 /root/proj4.fs /root/proj4
+root:~> ./gpsupdate 37 448743 126 950364 17
+root:~> ./file_write test1
+root:~> ./file_loc test1
+Location information: (latitude, longitude) / accuracy = (37.448743, 126.950364) / 17
+Google Maps link: https://www.google.com/maps/place/@37.448743,126.950364,17z/
+root:~> ./gpsupdate -37 448743 -126 950364 17
+root:~> ./file_loc test1
+[   94.961063] Can't access that location
+root:~> ./file_write test2
+root:~> ./file_loc test2
+Location information: (latitude, longitude) / accuracy = (-37.448743, -126.950364) / 17
+Google Maps link: https://www.google.com/maps/place/@-37.448743,-126.950364,17z/
+root:~> ./gpsupdate 37 458743 126 960364 17
+root:~> ./file_loc test1
+Location information: (latitude, longitude) / accuracy = (37.448743, 126.950364) / 17
+Google Maps link: https://www.google.com/maps/place/@37.448743,126.950364,17z/
+root:~> ./file_write test1
+root:~> ./file_loc test1
+Location information: (latitude, longitude) / accuracy = (37.458743, 126.960364) / 17
+Google Maps link: https://www.google.com/maps/place/@37.458743,126.960364,17z/
+root:~> ./gpsupdate 37 458743 186 960364 17
+[   95.799730] Invalid location
+ERROR
+root:~> ls -l proj4
+total 17
+-rw-r--r-- 1 root root     5 Jan  1  1970 Dokdo
+-rw-r--r-- 1 root root     5 Jan  1  1970 Gyeongbokgung
+drwxr-xr-x 2 root root  1024 Jan  1  1970 SeoulNat
+drwx------ 2 root root 12288 Dec 17  2022 lost+found
+-rw-r--r-- 1 root root     5 Jan  1 00:01 test1
+-rw-r--r-- 1 root root     5 Jan  1 00:01 test2
+root:~> ./file_loc Gyeongbokgung
+
+[   96.751637] Can't access that location
+root:~> ./file_loc Dokdo
+[   96.894619] Can't access that location
+root:~> ./file_loc SeoulNat
+[   96.985131] Invalid path
+```
 
 ## 4. Lesson learned
 ### 4.1

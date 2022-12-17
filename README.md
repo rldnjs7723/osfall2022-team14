@@ -52,6 +52,7 @@ System Call 함수는 SYSCALL_DEFINE을 통해 구현하였습니다.
 ```
 SYSCALL_DEFINE1(set_gps_location, struct gps_location __user *, loc)
 SYSCALL_DEFINE2(get_gps_location, const char __user *, pathname, struct gps_location __user *, loc)
+```
 
 ### 2.2 Define data structures for tracking device location
 gps.h 파일에 gps_location 구조체와 fblock 구조체를 정의했습니다. gps_location 구조체는 location의 위도, 경도의 정수/소수(6자리까지)의 정보와 허용 오차 범위를 담는 데에 사용하고, fblock 구조체는 kernel 내에서 floating 연산이 되지 않아 실수 연산을 정수 연산으로 바꾸어 계산해야 할 때 사용합니다.
@@ -70,7 +71,22 @@ typedef struct _fblock {
 ```
 
 ### 2.3 fblock function
+fblock 구조체 간의 연산을 수행하기 위한 함수들을 정의했습니다. 코사인 함수와 코사인 역함수는 테일러 급수를 이용하여 정의했습니다.
+```
+fblock myadd(fblock num1, fblock num2);
+fblock mysub(fblock num1, fblock num2);
+fblock mymul(fblock num1, fblock num2);
+fblock mydiv(fblock num, long long int div);
+fblock mypow(fblock num, int exp);
+long long int myfactorial(long long int num);
+fblock mycos(fblock deg);
+fblock myarccos(fblock deg);
+```
 
+### 2.4 calculate distance and check if able to access
+get_dist 함수를 이용하여, 저장된 위치 정보와 최근 위치 정보가 나타내는 위치 간의 거리를 구하고, LocationCompare 함수를 이용하여 두 위치 정보가 갖는 accuracy의 합보다 거리가 더 가까운지를 판단하였습니다. 거리가 더 가깝다면 get_gps_location 시스템 콜 시에 받아들이고, 거리가 더 멀면 받아들이지 않습니다. get_dist 함수에서 거리를 구할 때에는, 지구가 구(sphere)라는 점에 착안하여 다음과 같은 haversine 공식을 이용해, 위도와 경도만으로 거리를 구했습니다.
+
+<img src="https://user-images.githubusercontent.com/104059642/208203945-41e90d66-926c-4d4a-ba08-7889422308e7.png"  width="1000" height="300">
 
 ## 3. gpsupdate and file_loc test
 ### 3.1 gpsupdate.c

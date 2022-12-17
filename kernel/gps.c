@@ -183,7 +183,11 @@ SYSCALL_DEFINE2(get_gps_location, const char __user *, pathname, struct gps_loca
 	}
 	inode->i_op->get_gps_location(inode, &loc_buf);
 	spin_lock(&gps_lock);
+<<<<<<< HEAD
 	if (!check_dist(&loc_buf, &latest_loc)) {
+=======
+	if (!LocationCompare(&loc_buf, &latest_loc)) {
+>>>>>>> 94b4f7c138b8ef0df0c164df19688240e029ebf1
 		spin_unlock(&gps_lock);
     printk("Can't access that location\n");
 		return -EACCES;

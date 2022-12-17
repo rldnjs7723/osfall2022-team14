@@ -25,7 +25,7 @@ long long int get_dist(struct gps_location* loc1, struct gps_location* loc2);
 int LocationCompare(struct gps_location *loc1, struct gps_location *loc2);
 long sys_set_gps_location(struct gps_location __user *loc);
 long sys_get_gps_location(const char __user *pathname, struct gps_location __user *loc);
-extern struct gps_location * latest_loc;
+extern struct gps_location latest_loc;
 
 #endif
 

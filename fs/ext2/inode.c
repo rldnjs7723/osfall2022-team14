@@ -39,6 +39,7 @@
 #include "ext2.h"
 #include "acl.h"
 #include "xattr.h"
+#include <linux/spinlock.h>
 #include <linux/gps.h>
 
 static int __ext2_write_inode(struct inode *inode, int do_sync);
@@ -1666,11 +1667,11 @@ int ext2_set_gps_location(struct inode *inode) {
 	struct ext2_inode_info * info = EXT2_I(inode);
 	
 	spin_lock(&gps_lock);
-	info->i_lat_integer = latest_loc->lat_integer;
-	info->i_lat_fractional = latest_loc->lat_fractional;
-	info->i_lng_integer = latest_loc->lng_integer;
-	info->i_lng_fractional = latest_loc->lng_fractional;
-	info->i_accuracy = latest_loc->accuracy;
+	info->i_lat_integer = latest_loc.lat_integer;
+	info->i_lat_fractional = latest_loc.lat_fractional;
+	info->i_lng_integer = latest_loc.lng_integer;
+	info->i_lng_fractional = latest_loc.lng_fractional;
+	info->i_accuracy = latest_loc.accuracy;
 	spin_unlock(&gps_lock);
 
 	return 0;

@@ -25,7 +25,6 @@ int main(int argc, char *argv[]) {
 	strcpy(tmp, "/root/proj4/");
 	strcat(tmp, argv[1]);
 	if (syscall(GET_GPS_LOCATION, tmp, &loc)) {
-		printf("ERROR\n");
 		return -1;
 	}
 	printf("Location information: (latitude, longitude) / accuracy = (%d.%d, %d.%d) / %d\n", loc.lat_integer, loc.lat_fractional, loc.lng_integer, loc.lng_fractional, loc.accuracy);

@@ -150,6 +150,9 @@ fblock mycos(fblock deg);
 ```
 ~~fblock myarccos(fblock deg);~~
 
+![image](https://user-images.githubusercontent.com/104059642/208242102-c83fa79f-c2e9-4800-89fe-714d37e1aff9.png)
+![image](https://user-images.githubusercontent.com/104059642/208242108-e59fb044-0c82-459f-b921-382bff8f948a.png)
+
 ### 2.5 calculate distance and check if able to access
 get_dist 함수를 이용하여, 저장된 위치 정보와 최근 위치 정보가 나타내는 위치 간의 거리를 구하고, LocationCompare 함수를 이용하여 두 위치 정보가 갖는 accuracy의 합보다 거리가 더 가까운지를 판단하였습니다. 거리가 더 가깝다면 get_gps_location 시스템 콜 시에 받아들이고, 거리가 더 멀면 받아들이지 않습니다. get_dist 함수에서 거리를 구할 때에는, 지구가 구(sphere)라는 점에 착안하여 다음과 같은 haversine 공식을 이용해, 위도와 경도만으로 거리를 구했습니다.
 
